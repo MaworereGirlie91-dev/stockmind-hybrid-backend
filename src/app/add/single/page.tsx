@@ -116,7 +116,7 @@ export default function SingleAddPage() {
   useEffect(() => {
     const channel = supabase
       .channel('rfid-scan')
-      .on('broadcast', { event: 'epc_scanned' }, ({ payload }) => {
+      .on('broadcast', { event: 'epc_scanned' }, ({ payload }: { payload: Record<string, unknown> }) => {
         const incoming = typeof payload?.epc === 'string' ? payload.epc : '';
         if (!incoming) {
           return;

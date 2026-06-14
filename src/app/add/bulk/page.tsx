@@ -113,7 +113,7 @@ export default function BulkAddPage() {
   useEffect(() => {
     const channel = supabase
       .channel('rfid-bulk')
-      .on('broadcast', { event: 'bulk_epc' }, ({ payload }) => {
+      .on('broadcast', { event: 'bulk_epc' }, ({ payload }: { payload: Record<string, unknown> }) => {
         const incoming = typeof payload?.epc === 'string' ? payload.epc : '';
         if (!incoming) {
           return;
