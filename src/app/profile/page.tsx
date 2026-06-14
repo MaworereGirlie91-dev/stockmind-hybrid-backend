@@ -205,9 +205,27 @@ export default function ProfilePage() {
                   <div>
                     <div className="text-sm font-semibold text-amber-800">You&apos;re using the system admin credentials</div>
                     <div className="text-xs text-amber-700 mt-0.5">
-                      Create a personal database account so you can set a display name, upload a photo, and manage your profile.
+                      These are the built-in credentials from the server config. If you already created your personal account, sign out and log in with your email and password instead.
                     </div>
                   </div>
+                </div>
+
+                {/* Sign out shortcut — primary action if account already exists */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await fetch('/api/auth/logout', { method: 'POST' });
+                    router.push('/login');
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+                >
+                  Sign out &amp; use my email account
+                </button>
+
+                <div className="flex items-center gap-3 text-xs text-amber-600">
+                  <div className="flex-1 border-t border-amber-200" />
+                  <span>or create your first account below</span>
+                  <div className="flex-1 border-t border-amber-200" />
                 </div>
 
                 <div className="space-y-3">
