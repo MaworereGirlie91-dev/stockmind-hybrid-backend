@@ -91,6 +91,7 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Failed to save.');
       setSaveOk(true);
+      window.dispatchEvent(new CustomEvent('stockmind:user-updated'));
       setTimeout(() => setSaveOk(false), 3000);
     } catch (e) {
       setSaveErr(e instanceof Error ? e.message : 'Failed to save.');
@@ -135,6 +136,7 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Upload failed.');
       setAvatarUrl(data.url as string);
+      window.dispatchEvent(new CustomEvent('stockmind:user-updated'));
     } catch (e) {
       setAvatarErr(e instanceof Error ? e.message : 'Upload failed.');
     } finally {

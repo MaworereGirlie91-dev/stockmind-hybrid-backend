@@ -96,6 +96,12 @@ export default function Navbar() {
   }, [pathname]);
 
   useEffect(() => {
+    const refresh = () => setUserInfo(readUserInfoCookie());
+    window.addEventListener('stockmind:user-updated', refresh);
+    return () => window.removeEventListener('stockmind:user-updated', refresh);
+  }, []);
+
+  useEffect(() => {
     function handler(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
