@@ -6,11 +6,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  FileUp,
   LayoutDashboard,
   Layers,
   Loader2,
+  Package,
   Radio,
   Scan,
   StopCircle,
@@ -22,11 +25,14 @@ import {
 import CsvTitleAssist from '@/components/CsvTitleAssist';
 import StatusBadge from '@/components/StatusBadge';
 import { parseLocation } from '@/lib/location';
+import { parseCsvImportRows, parseSpreadsheetImportRows } from '@/lib/csv';
 import { createClient } from '@/lib/supabase/client';
-import { BookCopyWithMaster, CsvTitleCandidate } from '@/types';
+import { BookCopyWithMaster, CsvImportRow, CsvTitleCandidate } from '@/types';
 
-type AppMode = 'home' | 'single' | 'bulk';
+type AppMode = 'home' | 'single' | 'bulk' | 'csv';
 type SinglePhase = 'waiting' | 'checking' | 'exists' | 'new_tag' | 'saving' | 'saved' | 'error';
+type CsvImportType = 'copies' | 'boxes';
+type CsvPhase = 'upload' | 'preview' | 'importing' | 'done' | 'error';
 
 interface SingleForm {
   title: string;
@@ -58,6 +64,7 @@ export default function ScanPage() {
       {mode === 'home' && <HomeScreen onSelect={setMode} />}
       {mode === 'single' && <SingleMode onBack={() => setMode('home')} />}
       {mode === 'bulk' && <BulkMode onBack={() => setMode('home')} />}
+      {mode === 'csv' && <CsvImportMode onBack={() => setMode('home')} />}
     </div>
   );
 }
@@ -104,6 +111,21 @@ function HomeScreen({ onSelect }: { onSelect: (mode: AppMode) => void }) {
           </div>
           <div className="text-[#1f2937] font-semibold text-sm mb-1">Bulk Scan</div>
           <div className="text-[#6b7280] text-xs leading-relaxed">Broadcast tags live to desktop.</div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSelect('csv')}
+          className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
+        >
+          <div className="flex items-start justify-between mb-2.5">
+            <div className="w-9 h-9 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
+              <FileUp size={16} className="text-[#c8102e]" />
+            </div>
+            <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Import</span>
+          </div>
+          <div className="text-[#1f2937] font-semibold text-sm mb-1">CSV / Spreadsheet Import</div>
+          <div className="text-[#6b7280] text-xs leading-relaxed">Upload a file to bulk-import tagged books or boxes with EPC tags and ISBNs.</div>
         </button>
       </div>
 
@@ -612,6 +634,360 @@ function BulkMode({ onBack }: { onBack: () => void }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CsvImportMode({ onBack }: { onBack: () => void }) {
+  const [phase, setPhase] = useState<CsvPhase>('upload');
+  const [importType, setImportType] = useState<CsvImportType>('copies');
+  const [rows, setRows] = useState<CsvImportRow[]>([]);
+  const [fileName, setFileName] = useState('');
+  const [parseError, setParseError] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<{ inserted: number; skipped: number; errors: string[] } | null>(null);
+  const [importError, setImportError] = useState('');
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    setParseError('');
+    setRows([]);
+    setFileName(file.name);
+
+    try {
+      const lower = file.name.toLowerCase();
+      let parsed: CsvImportRow[] = [];
+
+      if (lower.endsWith('.csv') || file.type.includes('csv')) {
+        const text = await file.text();
+        parsed = parseCsvImportRows(text);
+      } else if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || lower.endsWith('.xlsm') || lower.endsWith('.ods')) {
+        const XLSX = await import('xlsx');
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array', cellText: true, cellDates: false });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) throw new Error('Spreadsheet has no sheets.');
+        const sheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json<Array<unknown>>(sheet, { header: 1, raw: false, defval: '', blankrows: false });
+        parsed = parseSpreadsheetImportRows(rawRows);
+      } else {
+        throw new Error('Unsupported file type. Use CSV, XLS, XLSX, XLSM, or ODS.');
+      }
+
+      if (!parsed.length) {
+        setParseError('No valid rows found. Make sure the file has a header row with columns like epc_tag, title, isbn, quantity, location.');
+        return;
+      }
+
+      setRows(parsed);
+      setPhase('preview');
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : 'Failed to parse file.');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!rows.length) return;
+    setImporting(true);
+    setImportError('');
+
+    try {
+      if (importType === 'boxes') {
+        const res = await fetch('/api/inventory/boxes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            boxes: rows.map((r) => ({
+              epc_tag: r.epc_tag,
+              title: r.title,
+              isbn: r.isbn || null,
+              category: r.category || null,
+              author: r.author || null,
+              publisher: r.publisher || null,
+              edition: r.edition || null,
+              list_price: r.list_price || null,
+              quantity: r.quantity || null,
+              location: r.location || null,
+            })),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? 'Import failed.');
+        setResult({ inserted: data.inserted ?? 0, skipped: data.skipped ?? 0, errors: data.errors ?? [] });
+      } else {
+        // Group rows by title+isbn, call /api/inventory/bulk per group
+        const groups = new Map<string, CsvImportRow[]>();
+        for (const row of rows) {
+          const key = `${row.title.trim()}|||${row.isbn.trim()}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push(row);
+        }
+
+        let totalInserted = 0;
+        let totalSkipped = 0;
+        const allErrors: string[] = [];
+
+        for (const [, group] of groups) {
+          const first = group[0];
+          const tags = group.map((r) => r.epc_tag).filter(Boolean);
+          if (!tags.length || !first.title.trim()) { totalSkipped += group.length; continue; }
+
+          const res = await fetch('/api/inventory/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: first.title.trim(),
+              isbn: first.isbn || null,
+              category: first.category || null,
+              author: first.author || null,
+              publisher: first.publisher || null,
+              edition: first.edition || null,
+              list_price: first.list_price || null,
+              location: first.location || null,
+              tags,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            allErrors.push(`"${first.title}": ${data.error ?? 'Import failed.'}`);
+          } else {
+            totalInserted += data.inserted_count ?? 0;
+            totalSkipped += data.skipped_existing ?? 0;
+          }
+        }
+
+        setResult({ inserted: totalInserted, skipped: totalSkipped, errors: allErrors.slice(0, 20) });
+      }
+      setPhase('done');
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed.');
+      setPhase('error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const reset = () => {
+    setPhase('upload');
+    setRows([]);
+    setFileName('');
+    setParseError('');
+    setResult(null);
+    setImportError('');
+  };
+
+  const missingEpc = rows.filter((r) => !r.epc_tag).length;
+  const missingTitle = rows.filter((r) => !r.title).length;
+  const validRows = rows.filter((r) => r.epc_tag && r.title).length;
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <div className="flex items-center gap-2.5 px-4 pt-6 pb-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-7 h-7 rounded-lg border border-[#f3c6cc] bg-white flex items-center justify-center text-[#6b7280] hover:text-[#c8102e] hover:border-[#c8102e] transition-colors shrink-0"
+        >
+          <ArrowLeft size={13} />
+        </button>
+        <div>
+          <div className="text-[#1f2937] font-semibold text-sm">CSV / Spreadsheet Import</div>
+          <div className="text-[#6b7280] text-[10px]">Bulk import from file</div>
+        </div>
+      </div>
+
+      <div className="flex-1 px-4 pb-6 space-y-3">
+
+        {/* Import type toggle */}
+        {(phase === 'upload' || phase === 'preview') && (
+          <div className="border border-[#f3c6cc] rounded-xl p-3 bg-white">
+            <div className="text-[10px] text-[#6b7280] font-medium mb-2">What are you importing?</div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setImportType('copies')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all border ${
+                  importType === 'copies'
+                    ? 'bg-[#c8102e] text-white border-[#c8102e]'
+                    : 'bg-white text-[#6b7280] border-[#f3c6cc] hover:border-[#c8102e]'
+                }`}
+              >
+                <Scan size={13} />
+                Book Copies
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportType('boxes')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all border ${
+                  importType === 'boxes'
+                    ? 'bg-[#c8102e] text-white border-[#c8102e]'
+                    : 'bg-white text-[#6b7280] border-[#f3c6cc] hover:border-[#c8102e]'
+                }`}
+              >
+                <Package size={13} />
+                Tagged Boxes
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Column guide */}
+        {phase === 'upload' && (
+          <div className="border border-[#f3c6cc] rounded-xl p-3 bg-[#fff5f6] space-y-2">
+            <div className="text-[10px] font-semibold text-[#c8102e]">Required columns in your spreadsheet:</div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-[10px] text-[#6b7280]">
+                <span className="font-mono bg-white border border-[#f3c6cc] rounded px-1 py-0.5 text-[9px] shrink-0">epc_tag</span>
+                RFID tag ID (required)
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-[#6b7280]">
+                <span className="font-mono bg-white border border-[#f3c6cc] rounded px-1 py-0.5 text-[9px] shrink-0">title</span>
+                Book title (required)
+              </div>
+              <div className="flex items-start gap-2 text-[10px] text-[#6b7280]">
+                <span className="shrink-0 text-[10px]">Optional:</span>
+                <span className="font-mono">isbn, category, author, publisher, edition, list_price, location{importType === 'boxes' ? ', quantity' : ''}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* File upload */}
+        {phase === 'upload' && (
+          <>
+            <label className="flex flex-col items-center gap-3 border-2 border-dashed border-[#f3c6cc] rounded-xl p-6 cursor-pointer hover:border-[#c8102e] hover:bg-[#fff5f6] transition-all">
+              <div className="w-12 h-12 rounded-xl bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
+                <FileUp size={22} className="text-[#c8102e]" />
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-[#1f2937]">{fileName || 'Tap to choose file'}</div>
+                <div className="text-[10px] text-[#9ca3af] mt-0.5">CSV, XLS, XLSX, XLSM or ODS</div>
+              </div>
+              <input
+                type="file"
+                accept=".csv,.xls,.xlsx,.xlsm,.ods,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
+                className="hidden"
+                onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            {parseError && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg border border-red-200 bg-red-50">
+                <XCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-red-600">{parseError}</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Preview */}
+        {phase === 'preview' && (
+          <>
+            <div className="border border-[#f3c6cc] rounded-xl overflow-hidden">
+              <div className="px-3 py-2.5 border-b border-[#f3c6cc] bg-[#fff5f6] flex items-center justify-between">
+                <div className="text-[10px] font-semibold text-[#1f2937]">{rows.length} row{rows.length !== 1 ? 's' : ''} — {fileName}</div>
+                <button type="button" onClick={reset} className="text-[10px] text-[#9ca3af] hover:text-[#c8102e] transition-colors">
+                  Change file
+                </button>
+              </div>
+
+              {(missingEpc > 0 || missingTitle > 0) && (
+                <div className="px-3 py-2 border-b border-amber-200 bg-amber-50 flex items-start gap-2">
+                  <AlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-700">
+                    {missingEpc > 0 && `${missingEpc} row(s) missing EPC tag. `}
+                    {missingTitle > 0 && `${missingTitle} row(s) missing title. `}
+                    These will be skipped.
+                  </p>
+                </div>
+              )}
+
+              <div className="max-h-72 overflow-y-auto divide-y divide-[#f3c6cc]">
+                {rows.slice(0, 50).map((row, i) => (
+                  <div key={i} className={`px-3 py-2.5 ${!row.epc_tag || !row.title ? 'opacity-40' : ''}`}>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <code className="text-[9px] font-mono text-[#9ca3af] truncate flex-1">{row.epc_tag || '(no EPC)'}</code>
+                      {importType === 'boxes' && row.quantity && (
+                        <span className="text-[9px] text-[#9ca3af] shrink-0">×{row.quantity}</span>
+                      )}
+                    </div>
+                    <div className="text-xs font-medium text-[#1f2937] truncate">{row.title || '(no title)'}</div>
+                    {(row.isbn || row.category || row.location) && (
+                      <div className="text-[10px] text-[#9ca3af] truncate mt-0.5">
+                        {[row.isbn, row.category, row.location].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {rows.length > 50 && (
+                  <div className="px-3 py-2 text-[10px] text-[#9ca3af] text-center">
+                    …and {rows.length - 50} more rows
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void handleImport()}
+              disabled={importing || validRows === 0}
+              className="rk-button-primary w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {importing
+                ? <><Loader2 size={16} className="animate-spin" /> Importing…</>
+                : <><CheckCircle2 size={16} /> Import {validRows} {importType === 'boxes' ? 'boxes' : 'copies'}</>
+              }
+            </button>
+          </>
+        )}
+
+        {/* Done */}
+        {phase === 'done' && result && (
+          <div className="space-y-3">
+            <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-5 text-center">
+              <CheckCircle2 size={28} className="text-emerald-500 mx-auto mb-2" />
+              <div className="text-[#1f2937] font-bold text-base">{result.inserted} {importType === 'boxes' ? 'boxes' : 'copies'} imported</div>
+              {result.skipped > 0 && (
+                <div className="text-[11px] text-[#6b7280] mt-1">{result.skipped} skipped (already exist or missing data)</div>
+              )}
+            </div>
+            {result.errors.length > 0 && (
+              <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-1">
+                <div className="text-[11px] font-semibold text-amber-700 flex items-center gap-1">
+                  <AlertTriangle size={12} /> {result.errors.length} error(s)
+                </div>
+                {result.errors.map((e, i) => (
+                  <p key={i} className="text-[10px] text-amber-600 font-mono break-all">{e}</p>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={reset}
+              className="w-full py-3 rounded-xl border border-[#f3c6cc] text-[#6b7280] text-sm font-semibold hover:border-[#c8102e] hover:text-[#c8102e] transition-colors"
+            >
+              Import another file
+            </button>
+          </div>
+        )}
+
+        {/* Error */}
+        {phase === 'error' && (
+          <div className="space-y-3">
+            <div className="border border-red-200 bg-red-50 rounded-xl p-5 text-center">
+              <XCircle size={28} className="text-red-500 mx-auto mb-2" />
+              <div className="text-[#1f2937] font-bold text-base">Import failed</div>
+              <div className="text-[11px] text-red-600 mt-1">{importError}</div>
+            </div>
+            <button
+              type="button"
+              onClick={reset}
+              className="w-full py-3 rounded-xl border border-[#f3c6cc] text-[#6b7280] text-sm font-semibold hover:border-[#c8102e] hover:text-[#c8102e] transition-colors"
+            >
+              Try again
+            </button>
           </div>
         )}
       </div>

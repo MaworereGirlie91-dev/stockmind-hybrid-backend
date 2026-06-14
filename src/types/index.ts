@@ -138,6 +138,19 @@ export interface CsvTitleCandidate {
   location: string;
 }
 
+export interface CsvImportRow {
+  epc_tag: string;
+  title: string;
+  isbn: string;
+  category: string;
+  author: string;
+  publisher: string;
+  edition: string;
+  list_price: string;
+  quantity: string;
+  location: string;
+}
+
 // Bridge type for Android -> WebView RFID injection
 declare global {
   interface Window {
