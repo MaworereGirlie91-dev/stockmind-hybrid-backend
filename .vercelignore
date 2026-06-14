@@ -1,0 +1,22 @@
+.git
+.gitignore
+.next
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local environment and secrets
+.env*
+
+# Mobile and legacy Android projects are not part of Next.js deployment
+/mobile
+/android-app
+
+# Large local build artifacts
+build
+coverage
+
+# Local tooling leftovers
+.tmp_*

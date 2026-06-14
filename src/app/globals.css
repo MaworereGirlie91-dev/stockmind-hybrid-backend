@@ -1,0 +1,136 @@
+﻿@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1f2937;
+  --border: #f3c6cc;
+  --muted: #6b7280;
+  --accent: #c8102e;
+  --accent-dim: #9f1027;
+  --card: #ffffff;
+  --card-hover: #fff0f2;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #c8102e;
+  --info: #e11d48;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--foreground);
+  background: #ffffff;
+  font-family: var(--font-sora), "Segoe UI", sans-serif;
+  letter-spacing: 0.01em;
+}
+
+code,
+kbd,
+pre,
+.font-mono {
+  font-family: var(--font-jetbrains-mono), "Courier New", monospace;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #fff5f6; }
+::-webkit-scrollbar-thumb { background: #f3c6cc; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #e7aab4; }
+
+/* Utility surfaces */
+.rk-surface {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.98), rgba(255, 245, 246, 0.96));
+  border: 1px solid rgba(243, 198, 204, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 14px 34px rgba(200, 16, 46, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.rk-card {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.99), rgba(255, 240, 242, 0.95));
+  border: 1px solid rgba(243, 198, 204, 0.9);
+  border-radius: 1rem;
+  box-shadow: 0 10px 24px rgba(200, 16, 46, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.rk-card:hover {
+  border-color: rgba(200, 16, 46, 0.42);
+}
+
+.rk-button-primary {
+  background: #c8102e;
+  color: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  box-shadow: 0 8px 20px rgba(200, 16, 46, 0.25);
+}
+
+.rk-button-primary:hover {
+  background: #9f1027;
+  transform: translateY(-1px);
+}
+
+.rk-button-ghost {
+  border: 1px solid #f3c6cc;
+  color: #6b7280;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.rk-button-ghost:hover {
+  border-color: #c8102e;
+  color: #9f1027;
+  background: rgba(200, 16, 46, 0.08);
+}
+
+.rk-input {
+  background: #ffffff;
+  border: 1px solid #f3c6cc;
+  color: #1f2937;
+  border-radius: 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rk-input:focus {
+  outline: none;
+  border-color: #c8102e;
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.12);
+}
+
+/* Prevent horizontal overflow globally */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Hide scrollbar utility (used on nav) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Animations */
+@keyframes scanPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(200,16,46,0.25); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(200,16,46,0); }
+}
+.scan-pulse { animation: scanPulse 1.5s ease-in-out infinite; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.slide-in { animation: slideIn 0.24s ease-out; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in { animation: fadeIn 0.3s ease-out; }

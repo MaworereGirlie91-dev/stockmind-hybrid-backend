@@ -1,0 +1,45 @@
+﻿name: stockmind_mobile
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  csv: ^6.0.0
+  cupertino_icons: ^1.0.8
+  connectivity_plus: ^6.1.1
+  crypto: ^3.0.3
+  excel2003: ^1.0.0
+  file_picker: ^8.3.7
+  flutter_dotenv: ^5.1.0
+  http: ^1.2.2
+  intl: ^0.20.1
+  path: ^1.9.0
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.3
+  spreadsheet_decoder: ^2.3.0
+  sqflite: ^2.4.1
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
+    - assets/branding/aiec-logo.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/branding/aiec-logo.png
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/branding/aiec-logo.png
