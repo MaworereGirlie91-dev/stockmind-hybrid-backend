@@ -119,6 +119,15 @@ function castAccount(data: unknown): AppAccount {
   };
 }
 
+function castAccountWithSecret(data: unknown): AppAccountWithSecret {
+  const row = data as Record<string, unknown>;
+  return {
+    ...castAccount(data),
+    password_hash: (row.password_hash as string | null) ?? '',
+    password_salt: (row.password_salt as string | null) ?? '',
+  };
+}
+
 export async function findAccountByEmail(email: string): Promise<AppAccountWithSecret | null> {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return null;
@@ -133,7 +142,7 @@ export async function findAccountByEmail(email: string): Promise<AppAccountWithS
 
   if (error) throw new Error(error.message);
   if (!data) return null;
-  return castAccount(data) as AppAccountWithSecret;
+  return castAccountWithSecret(data);
 }
 
 export async function findAccountByUsername(username: string): Promise<AppAccountWithSecret | null> {
@@ -150,7 +159,7 @@ export async function findAccountByUsername(username: string): Promise<AppAccoun
 
   if (error) throw new Error(error.message);
   if (!data) return null;
-  return castAccount(data) as AppAccountWithSecret;
+  return castAccountWithSecret(data);
 }
 
 export async function findAccountById(id: string): Promise<AppAccount | null> {
