@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { createAccount, findAccountByUsername, normalizeEmail } from '@/lib/server/accounts';
+import {
+  createAccount,
+  findAccountByUsername,
+  findBrokenAccountByEmail,
+  forceSetPassword,
+  normalizeEmail,
+  updateProfile,
+} from '@/lib/server/accounts';
 import { SESSION_COOKIE_NAME, USER_INFO_COOKIE_NAME, encodeUserInfo, issueWebSession } from '@/lib/server/auth';
 import { requireWebSession } from '@/lib/server/auth-guard';
 import { isProd, sessionDurationSeconds } from '@/lib/server/env';
@@ -13,8 +20,8 @@ export async function POST(req: NextRequest) {
     const claims = await requireWebSession();
 
     // Only allowed when the current session has no DB record (env-var admin bootstrap)
-    const existing = await findAccountByUsername(claims.sub);
-    if (existing) {
+    const sessionAccount = await findAccountByUsername(claims.sub);
+    if (sessionAccount) {
       return NextResponse.json(
         { error: 'Your session already has a database account. Use the profile page to edit it.' },
         { status: 400 }
@@ -39,19 +46,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
     }
 
-    const account = await createAccount({
-      email,
-      password,
-      displayName: displayName ?? undefined,
-      createdBy: 'bootstrap',
-      role: 'admin',
-    });
-
-    // Issue a new session bound to the new DB account
-    const token = await issueWebSession(account.username, 'admin');
     const ttl = sessionDurationSeconds();
+    let account;
 
-    const response = NextResponse.json({ ok: true, username: account.username });
+    // Check if there's a broken account (manually inserted, no password hash)
+    const broken = await findBrokenAccountByEmail(email);
+    if (broken) {
+      // Repair it: set a proper password hash and optionally update display name
+      await forceSetPassword(broken.id, password);
+      if (displayName) {
+        await updateProfile({ accountId: broken.id, displayName });
+      }
+      account = broken;
+    } else {
+      // Create a fresh account
+      account = await createAccount({
+        email,
+        password,
+        displayName: displayName ?? undefined,
+        createdBy: 'bootstrap',
+        role: 'admin',
+      });
+    }
+
+    // Issue a new session bound to the account
+    const token = await issueWebSession(account.username, 'admin');
+
+    const response = NextResponse.json({ ok: true, username: account.username, repaired: !!broken });
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: isProd(),
@@ -65,7 +86,7 @@ export async function POST(req: NextRequest) {
         sub: account.username,
         role: account.role,
         displayName: account.display_name,
-        avatarUrl: null,
+        avatarUrl: account.avatar_url,
       }),
       { httpOnly: false, secure: isProd(), sameSite: 'lax', path: '/', maxAge: ttl }
     );

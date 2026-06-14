@@ -181,9 +181,53 @@ export async function authenticateAccount(
   if (!account) account = await findAccountByEmail(loginIdentifier);
   if (!account || account.deleted_at || !account.is_active) return null;
 
+  // Gracefully skip accounts that were manually inserted without a password hash
+  if (!account.password_salt || !account.password_hash) return null;
+
   const valid = verifyPassword(normalizedPassword, account.password_salt, account.password_hash);
   if (!valid) return null;
   return account;
+}
+
+/** Find an account by email that has a missing password hash (manually inserted / broken). */
+export async function findBrokenAccountByEmail(email: string): Promise<AppAccount | null> {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return null;
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('app_accounts')
+    .select(ACCOUNT_FIELDS)
+    .eq('email', normalizedEmail)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const row = data as Record<string, unknown>;
+  const hasSalt = typeof row.password_salt === 'string' && row.password_salt.length > 0;
+  const hasHash = typeof row.password_hash === 'string' && row.password_hash.length > 0;
+  if (hasSalt && hasHash) return null; // Not broken
+  return castAccount(data);
+}
+
+/** Set a new password on an account directly (no current-password check). Used for account repair. */
+export async function forceSetPassword(accountId: string, newPassword: unknown): Promise<void> {
+  if (!isUuid(accountId)) throw new Error('Invalid account id.');
+
+  const normalizedPassword = normalizePassword(newPassword);
+  if (!normalizedPassword) throw new Error(`Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
+
+  const { hash, salt } = hashPassword(normalizedPassword);
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('app_accounts')
+    .update({ password_hash: hash, password_salt: salt, must_change_password: false, updated_at: new Date().toISOString() })
+    .eq('id', accountId)
+    .is('deleted_at', null);
+
+  if (error) throw new Error(error.message);
 }
 
 export async function listAccounts(): Promise<AppAccount[]> {
