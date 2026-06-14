@@ -57,6 +57,9 @@ const initialForm: BulkForm = {
   location: '',
 };
 
+const inputCls =
+  'w-full border border-[#f3c6cc] rounded-xl px-3.5 py-2.5 text-sm text-[#1f2937] placeholder-[#9ca3af] focus:outline-none focus:border-[#c8102e] bg-white transition-colors';
+
 export default function BulkAddPage() {
   const supabase = createClient();
   const { categories, locations, addCategory, addLocation } = useSettings();
@@ -73,9 +76,7 @@ export default function BulkAddPage() {
   const epcSet = useRef<Set<string>>(new Set());
   const phaseRef = useRef<BulkPhase>('setup');
 
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   const applyCsvCandidate = useCallback((candidate: CsvTitleCandidate) => {
     const parsedLocation = parseLocation({ location: candidate.location });
@@ -95,18 +96,14 @@ export default function BulkAddPage() {
 
   const handleEpc = useCallback((raw: string, fromHandheld: boolean) => {
     const epc = raw.trim().toUpperCase();
-    if (!epc || epcSet.current.has(epc)) {
-      return;
-    }
+    if (!epc || epcSet.current.has(epc)) return;
     epcSet.current.add(epc);
     setTags((prev) => [{ epc, scannedAt: new Date(), fromHandheld }, ...prev]);
   }, []);
 
   useEffect(() => {
     window.onRFIDScan = (epc: string) => {
-      if (phaseRef.current === 'scanning') {
-        handleEpc(epc, false);
-      }
+      if (phaseRef.current === 'scanning') handleEpc(epc, false);
     };
   }, [handleEpc]);
 
@@ -115,32 +112,20 @@ export default function BulkAddPage() {
       .channel('rfid-bulk')
       .on('broadcast', { event: 'bulk_epc' }, ({ payload }: { payload: Record<string, unknown> }) => {
         const incoming = typeof payload?.epc === 'string' ? payload.epc : '';
-        if (!incoming) {
-          return;
-        }
+        if (!incoming) return;
         setHandheldConnected(true);
         setLastFlash(true);
         setTimeout(() => setLastFlash(false), 800);
-        if (phaseRef.current === 'scanning') {
-          handleEpc(incoming, true);
-        }
+        if (phaseRef.current === 'scanning') handleEpc(incoming, true);
       })
       .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') {
-          setHandheldConnected(true);
-        }
+        if (status === 'SUBSCRIBED') setHandheldConnected(true);
       });
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return () => { void supabase.removeChannel(channel); };
   }, [handleEpc, supabase]);
 
   const startScan = () => {
-    if (!form.title.trim()) {
-      setFormError('Book title is required to start scanning.');
-      return;
-    }
+    if (!form.title.trim()) { setFormError('Book title is required to start scanning.'); return; }
     setFormError('');
     epcSet.current.clear();
     setTags([]);
@@ -149,7 +134,7 @@ export default function BulkAddPage() {
 
   const removeTag = (epc: string) => {
     epcSet.current.delete(epc);
-    setTags((prev) => prev.filter((tag) => tag.epc !== epc));
+    setTags((prev) => prev.filter((t) => t.epc !== epc));
   };
 
   const reset = () => {
@@ -163,9 +148,7 @@ export default function BulkAddPage() {
   };
 
   const confirmAll = async () => {
-    if (!tags.length) {
-      return;
-    }
+    if (!tags.length) return;
     setSaveError('');
     setPhase('confirming');
 
@@ -183,17 +166,12 @@ export default function BulkAddPage() {
         location: form.location || null,
         location_type: form.location_type,
         location_name: form.location || null,
-        tags: tags.map((tag) => tag.epc),
+        tags: tags.map((t) => t.epc),
       }),
     });
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setSaveError(data.error ?? 'Bulk save failed.');
-      setPhase('error');
-      return;
-    }
-
+    if (!res.ok) { setSaveError(data.error ?? 'Bulk save failed.'); setPhase('error'); return; }
     setSavedCount(Number(data.inserted_count ?? tags.length));
     setPhase('done');
   };
@@ -201,212 +179,137 @@ export default function BulkAddPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 pb-24 sm:pb-8">
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-white">Bulk Add</h1>
-            <p className="text-sm text-[#555] mt-0.5">Set title details once, then scan multiple EPC tags.</p>
+            <h1 className="text-xl font-semibold text-[#1f2937]">Bulk Add</h1>
+            <p className="text-sm text-[#6b7280] mt-0.5">Set title details once, then scan multiple EPC tags.</p>
           </div>
-          <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-500 shrink-0 ${
-              lastFlash
-                ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
-                : handheldConnected
-                  ? 'border-blue-500/30 bg-blue-500/5 text-blue-400'
-                  : 'border-[#2a2a2a] bg-[#111] text-[#444]'
-            }`}
-          >
-            {lastFlash ? (
-              <Smartphone size={12} className="animate-bounce" />
-            ) : handheldConnected ? (
-              <Wifi size={12} />
-            ) : (
-              <Wifi size={12} className="opacity-40" />
-            )}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-500 shrink-0 ${
+            lastFlash ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+            : handheldConnected ? 'border-blue-200 bg-blue-50 text-blue-600'
+            : 'border-[#f3c6cc] bg-[#fffafa] text-[#9ca3af]'
+          }`}>
+            {lastFlash ? <Smartphone size={12} className="animate-bounce" />
+              : handheldConnected ? <Wifi size={12} />
+              : <Wifi size={12} className="opacity-40" />}
             {lastFlash ? 'Tag received' : handheldConnected ? 'Handheld ready' : 'Listening'}
           </div>
         </div>
 
+        {/* Done state */}
         {phase === 'done' && (
-          <div className="border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-8 text-center slide-in">
-            <CheckCircle2 size={32} className="text-emerald-400 mx-auto mb-3" />
-            <div className="text-white font-semibold text-lg mb-1">{savedCount} copies saved</div>
-            <div className="text-[#555] text-sm mb-6">
-              All scanned tags were linked to <span className="text-white">{form.title}</span>
+          <div className="border border-emerald-200 bg-emerald-50 rounded-2xl p-8 text-center">
+            <CheckCircle2 size={36} className="text-emerald-600 mx-auto mb-3" />
+            <div className="text-[#1f2937] font-semibold text-lg mb-1">{savedCount} copies saved</div>
+            <div className="text-[#6b7280] text-sm mb-6">
+              All scanned tags were linked to <span className="font-medium text-[#1f2937]">{form.title}</span>
             </div>
-            <button
-              onClick={reset}
-              className="px-6 py-2.5 rounded-lg bg-white text-black text-sm font-semibold hover:bg-[#e6e6e6] transition-colors"
-            >
+            <button type="button" onClick={reset}
+              className="px-6 py-2.5 rounded-xl bg-[#c8102e] text-white text-sm font-semibold hover:bg-[#9f1027] transition-colors">
               Start new bulk scan
             </button>
           </div>
         )}
 
+        {/* Error state */}
         {phase === 'error' && (
-          <div className="border border-red-500/30 bg-red-500/5 rounded-xl p-6 text-center slide-in">
-            <XCircle size={28} className="text-red-400 mx-auto mb-3" />
-            <div className="text-white font-semibold mb-1">Save failed</div>
-            <div className="text-red-400 text-sm mb-4">{saveError}</div>
-            <button
-              onClick={() => setPhase('scanning')}
-              className="px-5 py-2 rounded-lg border border-[#2a2a2a] text-sm text-[#888] hover:text-white transition-colors"
-            >
+          <div className="border border-red-200 bg-red-50 rounded-2xl p-6 text-center">
+            <XCircle size={32} className="text-red-500 mx-auto mb-3" />
+            <div className="text-[#1f2937] font-semibold mb-1">Save failed</div>
+            <div className="text-red-600 text-sm mb-4">{saveError}</div>
+            <button type="button" onClick={() => setPhase('scanning')}
+              className="px-5 py-2 rounded-xl border border-[#f3c6cc] text-sm text-[#6b7280] hover:border-[#c8102e] hover:text-[#c8102e] transition-colors">
               Return to scanning
             </button>
           </div>
         )}
 
+        {/* Setup form */}
         {phase === 'setup' && (
-          <div className="border border-[#2a2a2a] rounded-xl p-6 bg-[#161616]">
-            <h2 className="text-sm font-semibold text-white mb-5 flex items-center gap-2">
-              <Layers size={15} className="text-[#555]" />
-              Step 1: Set title metadata
+          <div className="border border-[#f3c6cc] rounded-2xl p-6 bg-white">
+            <h2 className="text-sm font-semibold text-[#1f2937] mb-5 flex items-center gap-2">
+              <Layers size={15} className="text-[#c8102e]" />
+              Step 1 — Set title metadata
             </h2>
             <div className="space-y-4">
               <CsvTitleAssist onSelect={applyCsvCandidate} />
+
               <div>
-                <label className="text-xs text-[#555] font-medium block mb-1.5">
-                  Book Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(event) => setForm({ ...form, title: event.target.value })}
-                  placeholder="e.g. Graham Computer Science"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
-                />
+                <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Book Title <span className="text-[#c8102e]">*</span></label>
+                <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="e.g. Graham Computer Science" className={inputCls} />
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-[#555] font-medium block mb-1.5">ISBN</label>
-                  <input
-                    type="text"
-                    value={form.isbn}
-                    onChange={(event) => setForm({ ...form, isbn: event.target.value })}
-                    placeholder="978-3-16-148410-0"
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
-                  />
+                  <label className="text-xs font-medium text-[#6b7280] block mb-1.5">ISBN</label>
+                  <input type="text" value={form.isbn} onChange={(e) => setForm({ ...form, isbn: e.target.value })}
+                    placeholder="978-3-16-148410-0" className={inputCls} />
                 </div>
-                <SelectOrAdd
-                  label="Category"
-                  value={form.category}
-                  onChange={(value) => setForm({ ...form, category: value === '__other__' ? '' : value })}
+                <SelectOrAdd label="Category" value={form.category}
+                  onChange={(v) => setForm({ ...form, category: v === '__other__' ? '' : v })}
                   options={categories}
-                  onAddNew={(value) => {
-                    addCategory(value);
-                    setForm((prev) => ({ ...prev, category: value }));
-                  }}
-                  placeholder="Select category"
-                />
+                  onAddNew={(v) => { addCategory(v); setForm((p) => ({ ...p, category: v })); }}
+                  placeholder="Select category" />
               </div>
 
               <div>
-                <label className="text-xs text-[#555] font-medium block mb-1.5">Location Type</label>
-                <select
-                  value={form.location_type}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      location_type: event.target.value as BulkForm['location_type'],
-                    })
-                  }
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#555]"
-                >
+                <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Location Type</label>
+                <select value={form.location_type}
+                  onChange={(e) => setForm({ ...form, location_type: e.target.value as BulkForm['location_type'] })}
+                  className={inputCls}>
                   <option value="warehouse">Warehouse</option>
                   <option value="stock_room">Stock Room</option>
                   <option value="shelf">Shelf</option>
                 </select>
               </div>
 
-              <SelectOrAdd
-                label="Location Name"
+              <SelectOrAdd label="Location Name"
                 value={form.location ? `${locationTypeLabel(form.location_type)}: ${form.location}` : ''}
-                onChange={(value) => {
-                  if (value === '__other__') {
-                    setForm({ ...form, location: '' });
-                    return;
-                  }
-                  const parsed = value.includes(':')
-                    ? parseLocation({ location: value })
-                    : { locationType: form.location_type, locationName: value };
-                  setForm({
-                    ...form,
-                    location_type: parsed.locationType ?? form.location_type,
-                    location: parsed.locationName ?? value,
-                  });
+                onChange={(v) => {
+                  if (v === '__other__') { setForm({ ...form, location: '' }); return; }
+                  const p = v.includes(':') ? parseLocation({ location: v }) : { locationType: form.location_type, locationName: v };
+                  setForm({ ...form, location_type: p.locationType ?? form.location_type, location: p.locationName ?? v });
                 }}
                 options={locations}
-                onAddNew={(value) => {
-                  const parsed = value.includes(':')
-                    ? parseLocation({ location: value })
-                    : { locationType: form.location_type, locationName: value };
-                  const locationName = parsed.locationName ?? value;
-                  const locationType = parsed.locationType ?? form.location_type;
-                  addLocation(locationName, locationType);
-                  setForm((prev) => ({
-                    ...prev,
-                    location_type: locationType,
-                    location: locationName,
-                  }));
+                onAddNew={(v) => {
+                  const p = v.includes(':') ? parseLocation({ location: v }) : { locationType: form.location_type, locationName: v };
+                  addLocation(p.locationName ?? v, p.locationType ?? form.location_type);
+                  setForm((prev) => ({ ...prev, location_type: p.locationType ?? prev.location_type, location: p.locationName ?? v }));
                 }}
-                placeholder="Select location name"
-              />
+                placeholder="Select location name" />
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-[#555] font-medium block mb-1.5">Author</label>
-                  <input
-                    type="text"
-                    value={form.author}
-                    onChange={(event) => setForm({ ...form, author: event.target.value })}
-                    placeholder="Author name"
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
-                  />
+                  <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Author</label>
+                  <input type="text" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })}
+                    placeholder="Author name" className={inputCls} />
                 </div>
                 <div>
-                  <label className="text-xs text-[#555] font-medium block mb-1.5">Publisher</label>
-                  <input
-                    type="text"
-                    value={form.publisher}
-                    onChange={(event) => setForm({ ...form, publisher: event.target.value })}
-                    placeholder="Publisher"
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
-                  />
+                  <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Publisher</label>
+                  <input type="text" value={form.publisher} onChange={(e) => setForm({ ...form, publisher: e.target.value })}
+                    placeholder="Publisher" className={inputCls} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-[#555] font-medium block mb-1.5">Edition</label>
-                  <input
-                    type="text"
-                    value={form.edition}
-                    onChange={(event) => setForm({ ...form, edition: event.target.value })}
-                    placeholder="e.g. 3rd"
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
-                  />
+                  <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Edition</label>
+                  <input type="text" value={form.edition} onChange={(e) => setForm({ ...form, edition: e.target.value })}
+                    placeholder="e.g. 3rd" className={inputCls} />
                 </div>
                 <div>
-                  <label className="text-xs text-[#555] font-medium block mb-1.5">List Price</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.list_price}
-                    onChange={(event) => setForm({ ...form, list_price: event.target.value })}
-                    placeholder="0.00"
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
-                  />
+                  <label className="text-xs font-medium text-[#6b7280] block mb-1.5">List Price</label>
+                  <input type="number" min="0" step="0.01" value={form.list_price}
+                    onChange={(e) => setForm({ ...form, list_price: e.target.value })} placeholder="0.00" className={inputCls} />
                 </div>
               </div>
 
-              {formError && <div className="text-red-400 text-xs">{formError}</div>}
+              {formError && <div className="text-red-600 text-xs">{formError}</div>}
 
-              <button
-                onClick={startScan}
-                className="w-full py-2.5 rounded-lg bg-white text-black text-sm font-semibold hover:bg-[#e6e6e6] transition-colors flex items-center justify-center gap-2"
-              >
+              <button type="button" onClick={startScan}
+                className="w-full py-2.5 rounded-xl bg-[#c8102e] text-white text-sm font-semibold hover:bg-[#9f1027] transition-colors flex items-center justify-center gap-2">
                 <Scan size={15} />
                 Start Scanning
               </button>
@@ -414,126 +317,101 @@ export default function BulkAddPage() {
           </div>
         )}
 
+        {/* Scanning / confirming */}
         {(phase === 'scanning' || phase === 'confirming') && (
           <div className="space-y-4">
-            <div className="border border-[#2a2a2a] rounded-xl p-4 bg-[#161616] flex items-center justify-between">
+            {/* Title summary bar */}
+            <div className="border border-[#f3c6cc] rounded-2xl p-4 bg-white flex items-center justify-between">
               <div>
-                <div className="text-white font-medium text-sm">{form.title}</div>
-                <div className="text-[#555] text-xs mt-0.5">
-                  {form.category && <span>{form.category} | </span>}
-                  {form.location && (
-                    <span>
-                      {locationTypeLabel(form.location_type)}: {form.location}
-                    </span>
-                  )}
+                <div className="text-[#1f2937] font-medium text-sm">{form.title}</div>
+                <div className="text-[#6b7280] text-xs mt-0.5">
+                  {form.category && <span>{form.category}</span>}
+                  {form.category && form.location && <span> · </span>}
+                  {form.location && <span>{locationTypeLabel(form.location_type)}: {form.location}</span>}
                 </div>
               </div>
-              <button onClick={reset} className="text-xs text-[#444] hover:text-[#888] transition-colors">
+              <button type="button" onClick={reset} className="text-xs text-[#9ca3af] hover:text-[#c8102e] transition-colors">
                 Reset
               </button>
             </div>
 
-            <div
-              className={`border rounded-xl p-4 flex items-center justify-between transition-colors ${
-                phase === 'scanning' ? 'border-blue-500/30 bg-blue-500/5' : 'border-[#2a2a2a] bg-[#161616]'
-              }`}
-            >
+            {/* Scan status */}
+            <div className={`border rounded-2xl p-4 flex items-center justify-between transition-colors ${
+              phase === 'scanning' ? 'border-blue-200 bg-blue-50' : 'border-[#f3c6cc] bg-white'
+            }`}>
               <div className="flex items-center gap-2.5">
-                {phase === 'scanning' ? (
-                  <Radio size={16} className="text-blue-400 scan-pulse" />
-                ) : (
-                  <StopCircle size={16} className="text-[#555]" />
-                )}
+                {phase === 'scanning'
+                  ? <Radio size={16} className="text-blue-500 scan-pulse" />
+                  : <StopCircle size={16} className="text-[#9ca3af]" />}
                 <div>
-                  <div className="text-sm font-medium text-white">{phase === 'scanning' ? 'Scanning' : 'Ready to save'}</div>
-                  <div className="text-xs text-[#555]">
-                    {tags.length} tag{tags.length !== 1 ? 's' : ''} captured
-                  </div>
+                  <div className="text-sm font-medium text-[#1f2937]">{phase === 'scanning' ? 'Scanning…' : 'Ready to save'}</div>
+                  <div className="text-xs text-[#6b7280]">{tags.length} tag{tags.length !== 1 ? 's' : ''} captured</div>
                 </div>
               </div>
               {phase === 'scanning' ? (
-                <button
-                  onClick={() => setPhase('confirming')}
-                  className="px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-xs text-[#888] hover:text-white hover:border-[#3a3a3a] transition-colors"
-                >
+                <button type="button" onClick={() => setPhase('confirming')}
+                  className="px-3 py-1.5 rounded-xl border border-[#f3c6cc] text-xs text-[#6b7280] hover:border-[#c8102e] hover:text-[#c8102e] transition-colors">
                   Stop
                 </button>
               ) : (
-                <button
-                  onClick={confirmAll}
-                  className="px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-[#e6e6e6] transition-colors"
-                >
+                <button type="button" onClick={confirmAll}
+                  className="px-3 py-1.5 rounded-xl bg-[#c8102e] text-white text-xs font-semibold hover:bg-[#9f1027] transition-colors">
                   Save all
                 </button>
               )}
             </div>
 
+            {/* Keyboard wedge input while scanning */}
             {phase === 'scanning' && (
-              <div className="border border-blue-500/20 rounded-xl p-4 bg-[#0d0d0d] space-y-3">
+              <div className="border border-blue-200 rounded-2xl p-4 bg-blue-50 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-blue-400 font-semibold">
+                  <div className="flex items-center gap-2 text-xs text-blue-600 font-semibold">
                     <Smartphone size={13} />
-                    Scan from handheld app
+                    Scan from handheld app or keyboard wedge
                   </div>
-                  <div className={`text-xs ${lastFlash ? 'text-emerald-400' : handheldConnected ? 'text-blue-400' : 'text-[#444]'}`}>
-                    {lastFlash ? 'Receiving...' : handheldConnected ? 'Connected' : 'Waiting for app'}
+                  <div className={`text-xs ${lastFlash ? 'text-emerald-600' : handheldConnected ? 'text-blue-500' : 'text-[#9ca3af]'}`}>
+                    {lastFlash ? 'Receiving…' : handheldConnected ? 'Connected' : 'Waiting for app'}
                   </div>
                 </div>
-
                 <input
                   type="text"
                   autoComplete="off"
                   placeholder="Tap here, then scan tags with keyboard wedge"
-                  className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-blue-500/40 font-mono"
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter') {
-                      return;
-                    }
-                    const value = (event.target as HTMLInputElement).value.trim();
-                    if (value) {
-                      handleEpc(value, false);
-                      (event.target as HTMLInputElement).value = '';
-                    }
-                    event.preventDefault();
+                  className="w-full border border-blue-200 rounded-xl px-3.5 py-2.5 text-sm text-[#1f2937] placeholder-[#9ca3af] focus:outline-none focus:border-blue-400 bg-white font-mono transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return;
+                    const v = (e.target as HTMLInputElement).value.trim();
+                    if (v) { handleEpc(v, false); (e.target as HTMLInputElement).value = ''; }
+                    e.preventDefault();
                   }}
                 />
               </div>
             )}
 
+            {/* Tag list */}
             {tags.length > 0 && (
-              <div className="border border-[#2a2a2a] rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-[#1a1a1a] bg-[#111] flex items-center justify-between">
-                  <span className="text-xs text-[#555] font-medium uppercase tracking-wider">Scanned Tags ({tags.length})</span>
+              <div className="border border-[#f3c6cc] rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#f3c6cc] bg-[#fffafa] flex items-center justify-between">
+                  <span className="text-xs text-[#6b7280] font-medium uppercase tracking-wider">Scanned Tags ({tags.length})</span>
                   {phase === 'scanning' && (
-                    <button
-                      onClick={() => {
-                        epcSet.current.clear();
-                        setTags([]);
-                      }}
-                      className="text-xs text-[#444] hover:text-red-400 transition-colors"
-                    >
-                      Clear
+                    <button type="button" onClick={() => { epcSet.current.clear(); setTags([]); }}
+                      className="text-xs text-[#9ca3af] hover:text-red-500 transition-colors">
+                      Clear all
                     </button>
                   )}
                 </div>
-                <div className="max-h-[320px] overflow-y-auto">
+                <div className="max-h-[320px] overflow-y-auto divide-y divide-[#f3c6cc]">
                   {tags.map((tag) => (
-                    <div
-                      key={tag.epc}
-                      className="flex items-center justify-between px-4 py-2.5 border-b border-[#1a1a1a] hover:bg-[#161616] transition-colors"
-                    >
+                    <div key={tag.epc} className="flex items-center justify-between px-4 py-2.5 hover:bg-[#fffafa] transition-colors">
                       <div className="flex items-center gap-2.5">
                         <div className={`w-1.5 h-1.5 rounded-full ${tag.fromHandheld ? 'bg-blue-400' : 'bg-emerald-400'}`} />
-                        <code className="text-xs text-[#888] font-mono">{tag.epc}</code>
+                        <code className="text-xs text-[#6b7280] font-mono">{tag.epc}</code>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-[#333]">{tag.scannedAt.toLocaleTimeString()}</span>
+                        <span className="text-[10px] text-[#9ca3af]">{tag.scannedAt.toLocaleTimeString()}</span>
                         {phase === 'scanning' && (
-                          <button
-                            onClick={() => removeTag(tag.epc)}
-                            className="text-[#444] hover:text-red-400 transition-colors"
-                            title="Remove"
-                          >
+                          <button type="button" onClick={() => removeTag(tag.epc)}
+                            className="text-[#9ca3af] hover:text-red-500 transition-colors" title="Remove">
                             <Trash2 size={12} />
                           </button>
                         )}
@@ -545,12 +423,9 @@ export default function BulkAddPage() {
             )}
 
             {phase === 'confirming' && (
-              <button
-                onClick={confirmAll}
-                disabled={!tags.length}
-                className="w-full py-3 rounded-xl bg-white text-black font-semibold text-sm hover:bg-[#e6e6e6] transition-colors disabled:opacity-40"
-              >
-                <CheckCircle2 size={16} className="inline mr-1" />
+              <button type="button" onClick={confirmAll} disabled={!tags.length}
+                className="w-full py-3 rounded-xl bg-[#c8102e] text-white font-semibold text-sm hover:bg-[#9f1027] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+                <CheckCircle2 size={16} />
                 Confirm all {tags.length} tags and save
               </button>
             )}
@@ -558,9 +433,9 @@ export default function BulkAddPage() {
         )}
 
         {phase === 'confirming' && !tags.length && (
-          <div className="flex items-center justify-center py-12 gap-3 text-[#555]">
+          <div className="flex items-center justify-center py-12 gap-3 text-[#6b7280]">
             <Loader2 size={18} className="animate-spin" />
-            <span className="text-sm">Saving</span>
+            <span className="text-sm">Saving…</span>
           </div>
         )}
       </main>

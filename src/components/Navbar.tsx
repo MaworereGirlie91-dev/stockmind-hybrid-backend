@@ -23,7 +23,7 @@ import type { UserInfoPayload } from '@/lib/server/auth';
 const adminNavItems = [
   { href: '/statistics', label: 'Dashboard', short: 'Dash', icon: LayoutDashboard },
   { href: '/inventory', label: 'Inventory', short: 'Stock', icon: Database },
-  { href: '/scan', label: 'Scan/Add', short: 'Scan', icon: Scan },
+  { href: '/add/bulk', label: 'Bulk Add', short: 'Add', icon: Scan },
   { href: '/sales', label: 'Sales', short: 'Sales', icon: ShoppingCart },
   { href: '/stock-count', label: 'Count', short: 'Count', icon: ClipboardList },
   { href: '/reports', label: 'Reports', short: 'Reports', icon: BarChart3 },

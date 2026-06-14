@@ -82,54 +82,78 @@ function HomeScreen({ onSelect }: { onSelect: (mode: AppMode) => void }) {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={() => onSelect('single')}
-          className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
-        >
-          <div className="flex items-start justify-between mb-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
-              <Scan size={16} className="text-[#c8102e]" />
+      {/* Mobile scan options */}
+      <div className="mb-2">
+        <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-2 px-0.5">Handheld Scanner</div>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => onSelect('single')}
+            className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
+                <Scan size={15} className="text-[#c8102e]" />
+              </div>
+              <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Single</span>
             </div>
-            <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Single</span>
-          </div>
-          <div className="text-[#1f2937] font-semibold text-sm mb-1">Single Add</div>
-          <div className="text-[#6b7280] text-xs leading-relaxed">Scan one tag — verify or register.</div>
-        </button>
+            <div className="text-[#1f2937] font-semibold text-sm mb-0.5">Single Scan</div>
+            <div className="text-[#6b7280] text-xs">Scan one tag — verify or register on device.</div>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => onSelect('bulk')}
-          className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
-        >
-          <div className="flex items-start justify-between mb-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
-              <Layers size={16} className="text-[#c8102e]" />
+          <button
+            type="button"
+            onClick={() => onSelect('bulk')}
+            className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
+                <Layers size={15} className="text-[#c8102e]" />
+              </div>
+              <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Bulk</span>
             </div>
-            <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Bulk</span>
-          </div>
-          <div className="text-[#1f2937] font-semibold text-sm mb-1">Bulk Scan</div>
-          <div className="text-[#6b7280] text-xs leading-relaxed">Broadcast tags live to desktop.</div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onSelect('csv')}
-          className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
-        >
-          <div className="flex items-start justify-between mb-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
-              <FileUp size={16} className="text-[#c8102e]" />
-            </div>
-            <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Import</span>
-          </div>
-          <div className="text-[#1f2937] font-semibold text-sm mb-1">CSV / Spreadsheet Import</div>
-          <div className="text-[#6b7280] text-xs leading-relaxed">Upload a file to bulk-import tagged books or boxes with EPC tags and ISBNs.</div>
-        </button>
+            <div className="text-[#1f2937] font-semibold text-sm mb-0.5">Bulk Scan</div>
+            <div className="text-[#6b7280] text-xs">Broadcast tags live to the desktop Bulk Add page.</div>
+          </button>
+        </div>
       </div>
 
-      <div className="mt-6 pt-4 border-t border-[#f3c6cc]">
+      {/* Desktop / import options */}
+      <div>
+        <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-2 px-0.5">Desktop / Import</div>
+        <div className="flex flex-col gap-2">
+          <Link
+            href="/add/bulk"
+            className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all block"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
+                <Package size={15} className="text-[#c8102e]" />
+              </div>
+              <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Desktop</span>
+            </div>
+            <div className="text-[#1f2937] font-semibold text-sm mb-0.5">Bulk Add (Desktop)</div>
+            <div className="text-[#6b7280] text-xs">Enter title info, scan multiple tags — save all at once.</div>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => onSelect('csv')}
+            className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
+                <FileUp size={15} className="text-[#c8102e]" />
+              </div>
+              <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Import</span>
+            </div>
+            <div className="text-[#1f2937] font-semibold text-sm mb-0.5">CSV / Spreadsheet Import</div>
+            <div className="text-[#6b7280] text-xs">Upload a file with EPC tags and ISBNs for books or tagged boxes.</div>
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-[#f3c6cc]">
         <Link href="/" className="flex items-center gap-1.5 text-[11px] text-[#6b7280] hover:text-[#c8102e] transition-colors">
           <LayoutDashboard size={12} />
           Open Dashboard
