@@ -129,7 +129,7 @@ export default function SingleAddPage() {
           void handleEpc(incoming);
         }
       })
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
           setHandheldConnected(true);
         }

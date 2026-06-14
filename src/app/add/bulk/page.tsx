@@ -125,7 +125,7 @@ export default function BulkAddPage() {
           handleEpc(incoming, true);
         }
       })
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
           setHandheldConnected(true);
         }
