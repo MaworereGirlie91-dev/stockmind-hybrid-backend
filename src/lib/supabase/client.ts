@@ -15,12 +15,14 @@ export const createClient = (): SupabaseClient => {
   const url = readPublicEnv('NEXT_PUBLIC_SUPABASE_URL');
   const anonKey = readPublicEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
+  const opts = { db: { schema: 'stockmind' } };
+
   if (typeof window === 'undefined') {
-    return createBrowserClient(url, anonKey);
+    return createBrowserClient(url, anonKey, opts);
   }
 
   if (!cachedClient) {
-    cachedClient = createBrowserClient(url, anonKey);
+    cachedClient = createBrowserClient(url, anonKey, opts);
   }
 
   return cachedClient;

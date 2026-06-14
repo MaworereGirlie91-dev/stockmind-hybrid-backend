@@ -7,6 +7,7 @@ export function createAdminClient() {
   const serviceRoleKey = readRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
 
   return createClient(url, serviceRoleKey, {
+    db: { schema: 'stockmind' },
     auth: {
       autoRefreshToken: false,
       persistSession: false,

@@ -41,7 +41,7 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className={`${sora.variable} ${jetbrainsMono.variable} bg-white text-[#1f2937] antialiased`}
+        className={`${sora.variable} ${jetbrainsMono.variable} bg-white text-[#1f2937] antialiased overflow-x-hidden`}
       >
         {children}
       </body>

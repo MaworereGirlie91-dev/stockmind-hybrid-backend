@@ -79,36 +79,36 @@ function HomeScreen({ onSelect }: { onSelect: (mode: AppMode) => void }) {
         <button
           type="button"
           onClick={() => onSelect('single')}
-          className="w-full text-left bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#3a3a3a] active:scale-[0.98] transition-all"
+          className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
         >
           <div className="flex items-start justify-between mb-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center">
-              <Scan size={16} className="text-white" />
+            <div className="w-9 h-9 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
+              <Scan size={16} className="text-[#c8102e]" />
             </div>
-            <span className="text-[9px] text-[#444] border border-[#222] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Single</span>
+            <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Single</span>
           </div>
-          <div className="text-white font-semibold text-sm mb-1">Single Add</div>
-          <div className="text-[#555] text-xs leading-relaxed">Scan one tag — verify or register.</div>
+          <div className="text-[#1f2937] font-semibold text-sm mb-1">Single Add</div>
+          <div className="text-[#6b7280] text-xs leading-relaxed">Scan one tag — verify or register.</div>
         </button>
 
         <button
           type="button"
           onClick={() => onSelect('bulk')}
-          className="w-full text-left bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#3a3a3a] active:scale-[0.98] transition-all"
+          className="w-full text-left bg-white border border-[#f3c6cc] rounded-xl p-4 hover:border-[#c8102e] hover:bg-[#fff5f6] active:scale-[0.98] transition-all"
         >
           <div className="flex items-start justify-between mb-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center">
-              <Layers size={16} className="text-white" />
+            <div className="w-9 h-9 rounded-lg bg-[#fff0f2] border border-[#f3c6cc] flex items-center justify-center">
+              <Layers size={16} className="text-[#c8102e]" />
             </div>
-            <span className="text-[9px] text-[#444] border border-[#222] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Bulk</span>
+            <span className="text-[9px] text-[#c8102e] border border-[#f3c6cc] bg-[#fff0f2] rounded px-1.5 py-0.5 font-medium uppercase tracking-wider">Bulk</span>
           </div>
-          <div className="text-white font-semibold text-sm mb-1">Bulk Scan</div>
-          <div className="text-[#555] text-xs leading-relaxed">Broadcast tags live to desktop.</div>
+          <div className="text-[#1f2937] font-semibold text-sm mb-1">Bulk Scan</div>
+          <div className="text-[#6b7280] text-xs leading-relaxed">Broadcast tags live to desktop.</div>
         </button>
       </div>
 
-      <div className="mt-6 pt-4 border-t border-[#1a1a1a]">
-        <Link href="/" className="flex items-center gap-1.5 text-[11px] text-[#444] hover:text-[#888] transition-colors">
+      <div className="mt-6 pt-4 border-t border-[#f3c6cc]">
+        <Link href="/" className="flex items-center gap-1.5 text-[11px] text-[#6b7280] hover:text-[#c8102e] transition-colors">
           <LayoutDashboard size={12} />
           Open Dashboard
         </Link>
@@ -187,7 +187,6 @@ function SingleMode({ onBack }: { onBack: () => void }) {
       if (data) {
         setExisting(data as BookCopyWithMaster);
         setPhase('exists');
-        // Auto-advance after 4 s so user can read it, then scan next
         autoResetRef.current = setTimeout(reset, 4000);
       } else {
         setExisting(null);
@@ -232,9 +231,8 @@ function SingleMode({ onBack }: { onBack: () => void }) {
     }
 
     const responseData = await res.json().catch(() => ({}));
-    setSavedCopyId(responseData?.item?.id ?? null);
+    setSavedCopyId(responseData?.copy_id ?? null);
     setPhase('saved');
-    // Auto-reset after 2 s for continuous scanning
     autoResetRef.current = setTimeout(reset, 2000);
   };
 
@@ -246,7 +244,6 @@ function SingleMode({ onBack }: { onBack: () => void }) {
     reset();
   };
 
-  // Auto-focus scan input on mount and after reset
   useEffect(() => {
     scanInputRef.current?.focus();
     return () => { if (autoResetRef.current) clearTimeout(autoResetRef.current); };
@@ -260,85 +257,85 @@ function SingleMode({ onBack }: { onBack: () => void }) {
         <button
           type="button"
           onClick={onBack}
-          className="w-7 h-7 rounded-lg border border-[#2a2a2a] flex items-center justify-center text-[#666] hover:text-white transition-colors shrink-0"
+          className="w-7 h-7 rounded-lg border border-[#f3c6cc] bg-white flex items-center justify-center text-[#6b7280] hover:text-[#c8102e] hover:border-[#c8102e] transition-colors shrink-0"
         >
           <ArrowLeft size={13} />
         </button>
         <div>
-          <div className="text-white font-semibold text-sm">Single Add</div>
-          <div className="text-[#444] text-[10px]">Scan · verify · register</div>
+          <div className="text-[#1f2937] font-semibold text-sm">Single Add</div>
+          <div className="text-[#6b7280] text-[10px]">Scan · verify · register</div>
         </div>
       </div>
 
       <div className="flex-1 px-4 pb-6 space-y-3">
         {/* Status card */}
         <div className={`rounded-xl p-4 border transition-colors ${
-          phase === 'waiting' ? 'border-[#2a2a2a] bg-[#161616]'
-          : phase === 'exists' ? 'border-amber-500/30 bg-amber-500/5'
-          : phase === 'saved' ? 'border-emerald-500/30 bg-emerald-500/5'
-          : phase === 'error' ? 'border-red-500/30 bg-red-500/5'
-          : 'border-blue-500/30 bg-blue-500/5'
+          phase === 'waiting'   ? 'border-[#f3c6cc] bg-[#fff5f6]'
+          : phase === 'exists' ? 'border-amber-200 bg-amber-50'
+          : phase === 'saved'  ? 'border-emerald-200 bg-emerald-50'
+          : phase === 'error'  ? 'border-red-200 bg-red-50'
+          : 'border-blue-200 bg-blue-50'
         }`}>
           <div className="flex items-center gap-2.5">
-            {phase === 'waiting' && <Radio size={17} className="text-[#444] scan-pulse shrink-0" />}
-            {phase === 'checking' && <Loader2 size={17} className="text-blue-400 animate-spin shrink-0" />}
-            {phase === 'exists' && <CheckCircle2 size={17} className="text-amber-400 shrink-0" />}
-            {phase === 'new_tag' && <Scan size={17} className="text-white shrink-0" />}
-            {phase === 'saving' && <Loader2 size={17} className="text-white animate-spin shrink-0" />}
-            {phase === 'saved' && <CheckCircle2 size={17} className="text-emerald-400 shrink-0" />}
-            {phase === 'error' && <XCircle size={17} className="text-red-400 shrink-0" />}
+            {phase === 'waiting'  && <Radio size={17} className="text-[#c8102e] scan-pulse shrink-0" />}
+            {phase === 'checking' && <Loader2 size={17} className="text-blue-500 animate-spin shrink-0" />}
+            {phase === 'exists'   && <CheckCircle2 size={17} className="text-amber-500 shrink-0" />}
+            {phase === 'new_tag'  && <Scan size={17} className="text-blue-500 shrink-0" />}
+            {phase === 'saving'   && <Loader2 size={17} className="text-blue-500 animate-spin shrink-0" />}
+            {phase === 'saved'    && <CheckCircle2 size={17} className="text-emerald-500 shrink-0" />}
+            {phase === 'error'    && <XCircle size={17} className="text-red-500 shrink-0" />}
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-white truncate">
-                {phase === 'waiting' && 'Ready to scan'}
+              <div className="text-sm font-semibold text-[#1f2937] truncate">
+                {phase === 'waiting'  && 'Ready to scan'}
                 {phase === 'checking' && 'Checking…'}
-                {phase === 'exists' && 'Already registered'}
-                {phase === 'new_tag' && 'New tag — fill details'}
-                {phase === 'saving' && 'Saving…'}
-                {phase === 'saved' && 'Saved ✓'}
-                {phase === 'error' && 'Error'}
+                {phase === 'exists'   && 'Already registered'}
+                {phase === 'new_tag'  && 'New tag — fill details'}
+                {phase === 'saving'   && 'Saving…'}
+                {phase === 'saved'    && 'Saved ✓'}
+                {phase === 'error'    && 'Error'}
               </div>
-              {epc && <code className="text-[10px] text-[#555] font-mono truncate block mt-0.5">{epc}</code>}
+              {epc && <code className="text-[10px] text-[#6b7280] font-mono truncate block mt-0.5">{epc}</code>}
             </div>
             {(phase === 'exists' || phase === 'new_tag' || phase === 'saved' || phase === 'error') && (
-              <button type="button" onClick={reset} className="text-[#444] hover:text-white transition-colors shrink-0 p-1" title="Clear / scan next">
+              <button type="button" onClick={reset} className="text-[#9ca3af] hover:text-[#c8102e] transition-colors shrink-0 p-1" title="Clear / scan next">
                 <X size={14} />
               </button>
             )}
           </div>
 
           {phase === 'exists' && existing && (
-            <div className="mt-3 space-y-2 border-t border-[#2a2a2a] pt-3">
+            <div className="mt-3 space-y-2 border-t border-amber-200 pt-3">
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <div className="text-[#444] text-[10px] mb-0.5">Title</div>
-                  <div className="text-white font-medium text-xs leading-tight truncate">{existing.books_master?.title}</div>
+                  <div className="text-[#6b7280] text-[10px] mb-0.5">Title</div>
+                  <div className="text-[#1f2937] font-medium text-xs leading-tight truncate">{existing.books_master?.title}</div>
                 </div>
                 <div>
-                  <div className="text-[#444] text-[10px] mb-0.5">Status</div>
+                  <div className="text-[#6b7280] text-[10px] mb-0.5">Status</div>
                   <div className="mt-0.5"><StatusBadge status={existing.status} /></div>
                 </div>
                 <div>
-                  <div className="text-[#444] text-[10px] mb-0.5">Category</div>
-                  <div className="text-[#888] text-xs truncate">{existing.books_master?.category ?? '—'}</div>
+                  <div className="text-[#6b7280] text-[10px] mb-0.5">Category</div>
+                  <div className="text-[#6b7280] text-xs truncate">{existing.books_master?.category ?? '—'}</div>
                 </div>
                 <div>
-                  <div className="text-[#444] text-[10px] mb-0.5">Location</div>
-                  <div className="text-[#888] text-xs truncate">{existing.location ?? '—'}</div>
+                  <div className="text-[#6b7280] text-[10px] mb-0.5">Location</div>
+                  <div className="text-[#6b7280] text-xs truncate">{existing.location ?? '—'}</div>
                 </div>
               </div>
-              <p className="text-[10px] text-[#555]">Auto-scanning next in 4 s…</p>
+              <p className="text-[10px] text-[#9ca3af]">Auto-scanning next in 4 s…</p>
             </div>
           )}
 
           {phase === 'saved' && (
-            <div className="mt-3 border-t border-[#2a2a2a] pt-3 flex items-center justify-between gap-2">
-              <p className="text-[10px] text-emerald-400">Saved. Auto-scanning next…</p>
+            <div className="mt-3 border-t border-emerald-200 pt-3 flex items-center justify-between gap-2">
+              <p className="text-[10px] text-emerald-600">Saved. Auto-scanning next…</p>
               {savedCopyId && (
                 <button
                   type="button"
                   onClick={handleDeleteSaved}
                   disabled={deleting}
-                  className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-300 transition-colors disabled:opacity-40"
+                  className="flex items-center gap-1 text-[10px] text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
                 >
                   <Trash2 size={11} />
                   {deleting ? 'Deleting…' : 'Undo / Delete'}
@@ -349,18 +346,18 @@ function SingleMode({ onBack }: { onBack: () => void }) {
         </div>
 
         {error && (
-          <div className="px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/5 text-red-400 text-xs">{error}</div>
+          <div className="px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 text-xs">{error}</div>
         )}
 
         {/* New tag form */}
         {phase === 'new_tag' && (
-          <div className="border border-[#2a2a2a] rounded-xl p-4 bg-[#161616] space-y-3">
+          <div className="border border-[#f3c6cc] rounded-xl p-4 bg-white space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold text-white">Register this tag</div>
+              <div className="text-xs font-semibold text-[#1f2937]">Register this tag</div>
               <button
                 type="button"
                 onClick={reset}
-                className="flex items-center gap-1 text-[10px] text-[#555] hover:text-red-400 transition-colors"
+                className="flex items-center gap-1 text-[10px] text-[#6b7280] hover:text-red-500 transition-colors"
                 title="Discard and scan another"
               >
                 <Trash2 size={11} />
@@ -371,49 +368,49 @@ function SingleMode({ onBack }: { onBack: () => void }) {
             <CsvTitleAssist onSelect={applyCsvCandidate} />
 
             <div>
-              <label className="text-[10px] text-[#444] font-medium block mb-1">
-                Title <span className="text-red-400">*</span>
+              <label className="text-[10px] text-[#6b7280] font-medium block mb-1">
+                Title <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Book title"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
+                className="rk-input w-full px-3 py-2 text-xs placeholder-[#9ca3af] focus:outline-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-[#444] font-medium block mb-1">ISBN</label>
+                <label className="text-[10px] text-[#6b7280] font-medium block mb-1">ISBN</label>
                 <input
                   type="text"
                   value={form.isbn}
                   onChange={(e) => setForm({ ...form, isbn: e.target.value })}
                   placeholder="ISBN"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
+                  className="rk-input w-full px-3 py-2 text-xs placeholder-[#9ca3af] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-[#444] font-medium block mb-1">Category</label>
+                <label className="text-[10px] text-[#6b7280] font-medium block mb-1">Category</label>
                 <input
                   type="text"
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
                   placeholder="e.g. English"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
+                  className="rk-input w-full px-3 py-2 text-xs placeholder-[#9ca3af] focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] text-[#444] font-medium block mb-1">Location</label>
+              <label className="text-[10px] text-[#6b7280] font-medium block mb-1">Location</label>
               <input
                 type="text"
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
                 placeholder="e.g. Shelf: A1"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
+                className="rk-input w-full px-3 py-2 text-xs placeholder-[#9ca3af] focus:outline-none"
               />
             </div>
 
@@ -423,14 +420,14 @@ function SingleMode({ onBack }: { onBack: () => void }) {
                 value={form.author}
                 onChange={(e) => setForm({ ...form, author: e.target.value })}
                 placeholder="Author"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
+                className="rk-input px-3 py-2 text-xs placeholder-[#9ca3af] focus:outline-none"
               />
               <input
                 type="text"
                 value={form.publisher}
                 onChange={(e) => setForm({ ...form, publisher: e.target.value })}
                 placeholder="Publisher"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
+                className="rk-input px-3 py-2 text-xs placeholder-[#9ca3af] focus:outline-none"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -439,7 +436,7 @@ function SingleMode({ onBack }: { onBack: () => void }) {
                 value={form.edition}
                 onChange={(e) => setForm({ ...form, edition: e.target.value })}
                 placeholder="Edition"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
+                className="rk-input px-3 py-2 text-xs placeholder-[#9ca3af] focus:outline-none"
               />
               <input
                 type="number"
@@ -448,24 +445,24 @@ function SingleMode({ onBack }: { onBack: () => void }) {
                 value={form.list_price}
                 onChange={(e) => setForm({ ...form, list_price: e.target.value })}
                 placeholder="Price"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#555]"
+                className="rk-input px-3 py-2 text-xs placeholder-[#9ca3af] focus:outline-none"
               />
             </div>
 
             <button
               type="button"
               onClick={handleSave}
-              className="w-full py-2.5 rounded-lg bg-white text-black font-semibold text-xs hover:bg-[#e6e6e6] transition-colors"
+              className="rk-button-primary w-full py-2.5 rounded-lg font-semibold text-xs"
             >
               Save to Inventory
             </button>
           </div>
         )}
 
-        {/* Scan input — always visible when waiting */}
+        {/* Scan input */}
         {scanVisible && (
-          <div className="border border-emerald-500/20 rounded-xl p-3 bg-emerald-500/5">
-            <div className="text-emerald-400 text-[10px] font-semibold mb-2">Tap here · pull trigger to scan</div>
+          <div className="border border-[#f3c6cc] rounded-xl p-3 bg-[#fff5f6]">
+            <div className="text-[#c8102e] text-[10px] font-semibold mb-2">Tap here · pull trigger to scan</div>
             <input
               ref={scanInputRef}
               type="text"
@@ -473,7 +470,6 @@ function SingleMode({ onBack }: { onBack: () => void }) {
               onChange={(e) => {
                 const value = e.target.value;
                 setScanInput(value);
-                // Fire immediately when Enter-terminated or >= 8 chars (no delay)
                 if (value.includes('\n') || value.includes('\r')) {
                   const clean = value.replace(/[\r\n]/g, '').trim();
                   if (clean.length >= 4) void handleEpc(clean);
@@ -486,12 +482,11 @@ function SingleMode({ onBack }: { onBack: () => void }) {
                 }
               }}
               onBlur={() => {
-                // Flush partial buffer on blur in case scanner didn't send Enter
                 if (scanInput.trim().length >= 8) void handleEpc(scanInput.trim());
               }}
               placeholder="Tap to focus and scan"
               autoComplete="off"
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-3 text-white font-mono text-sm placeholder:text-[#333] focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20"
+              className="rk-input w-full px-3 py-3 font-mono text-sm placeholder:text-[#9ca3af] focus:outline-none"
             />
           </div>
         )}
@@ -541,13 +536,13 @@ function BulkMode({ onBack }: { onBack: () => void }) {
         <button
           type="button"
           onClick={onBack}
-          className="w-7 h-7 rounded-lg border border-[#2a2a2a] flex items-center justify-center text-[#666] hover:text-white transition-colors shrink-0"
+          className="w-7 h-7 rounded-lg border border-[#f3c6cc] bg-white flex items-center justify-center text-[#6b7280] hover:text-[#c8102e] hover:border-[#c8102e] transition-colors shrink-0"
         >
           <ArrowLeft size={13} />
         </button>
         <div>
-          <div className="text-white font-semibold text-sm">Bulk Scan</div>
-          <div className="text-[#444] text-[10px]">Broadcast to desktop Bulk Add</div>
+          <div className="text-[#1f2937] font-semibold text-sm">Bulk Scan</div>
+          <div className="text-[#6b7280] text-[10px]">Broadcast to desktop Bulk Add</div>
         </div>
       </div>
 
@@ -560,8 +555,8 @@ function BulkMode({ onBack }: { onBack: () => void }) {
           }}
           className={`w-full py-4 rounded-xl font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
             isScanning
-              ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-              : 'bg-white text-black hover:bg-[#e6e6e6]'
+              ? 'bg-red-50 border border-red-200 text-red-600'
+              : 'rk-button-primary rounded-xl'
           }`}
         >
           {isScanning ? <StopCircle size={17} /> : <Scan size={17} />}
@@ -569,8 +564,8 @@ function BulkMode({ onBack }: { onBack: () => void }) {
         </button>
 
         {isScanning && (
-          <div className="border border-blue-500/20 rounded-xl p-3 bg-blue-500/5">
-            <div className="text-blue-400 text-[10px] font-semibold mb-2">Tap here · pull trigger</div>
+          <div className="border border-[#f3c6cc] rounded-xl p-3 bg-[#fff5f6]">
+            <div className="text-[#c8102e] text-[10px] font-semibold mb-2">Tap here · pull trigger</div>
             <input
               ref={scanInputRef}
               type="text"
@@ -594,26 +589,26 @@ function BulkMode({ onBack }: { onBack: () => void }) {
               }}
               placeholder="Tap to focus and scan tags"
               autoComplete="off"
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-3 text-white font-mono text-sm placeholder:text-[#333] focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20"
+              className="rk-input w-full px-3 py-3 font-mono text-sm placeholder:text-[#9ca3af] focus:outline-none"
             />
           </div>
         )}
 
         {tags.length > 0 && (
-          <div className="border border-[#2a2a2a] rounded-xl overflow-hidden">
-            <div className="px-3 py-2.5 border-b border-[#1a1a1a] bg-[#111] flex justify-between items-center">
-              <span className="text-[10px] text-[#555] font-medium uppercase tracking-wider">Scanned ({tags.length})</span>
-              <button type="button" onClick={reset} className="text-[#333] hover:text-red-400 text-[10px] transition-colors flex items-center gap-1">
+          <div className="border border-[#f3c6cc] rounded-xl overflow-hidden">
+            <div className="px-3 py-2.5 border-b border-[#f3c6cc] bg-[#fff5f6] flex justify-between items-center">
+              <span className="text-[10px] text-[#6b7280] font-medium uppercase tracking-wider">Scanned ({tags.length})</span>
+              <button type="button" onClick={reset} className="text-[#9ca3af] hover:text-red-500 text-[10px] transition-colors flex items-center gap-1">
                 <Trash2 size={10} />
                 Clear all
               </button>
             </div>
-            <div className="max-h-80 overflow-y-auto divide-y divide-[#1a1a1a]">
+            <div className="max-h-80 overflow-y-auto divide-y divide-[#f3c6cc]">
               {tags.map((tag) => (
                 <div key={tag.epc} className="flex items-center gap-2.5 px-3 py-2.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-                  <code className="text-[10px] text-[#888] font-mono flex-1 truncate">{tag.epc}</code>
-                  <span className="text-[9px] text-[#333] shrink-0">{tag.at.toLocaleTimeString()}</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#c8102e] shrink-0" />
+                  <code className="text-[10px] text-[#6b7280] font-mono flex-1 truncate">{tag.epc}</code>
+                  <span className="text-[9px] text-[#9ca3af] shrink-0">{tag.at.toLocaleTimeString()}</span>
                 </div>
               ))}
             </div>
