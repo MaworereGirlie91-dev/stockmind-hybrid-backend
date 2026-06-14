@@ -4,7 +4,8 @@ export const dynamic = 'force-dynamic';
 
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Check, Eye, EyeOff, KeyRound, Loader2, Save, User } from 'lucide-react';
+import { Camera, Check, Eye, EyeOff, KeyRound, Loader2, Save, ShieldAlert, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
@@ -30,8 +31,18 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [me, setMe] = useState<MeData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // First-account setup (env-var admin bootstrap)
+  const [setupEmail, setSetupEmail] = useState('');
+  const [setupDisplayName, setSetupDisplayName] = useState('');
+  const [setupPw, setSetupPw] = useState('');
+  const [setupConfirmPw, setSetupConfirmPw] = useState('');
+  const [setupSaving, setSetupSaving] = useState(false);
+  const [setupErr, setSetupErr] = useState('');
+  const [showSetupPw, setShowSetupPw] = useState(false);
 
   // Profile form
   const [displayName, setDisplayName] = useState('');
@@ -131,6 +142,28 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSetupAccount = async () => {
+    setSetupErr('');
+    if (setupPw !== setupConfirmPw) { setSetupErr('Passwords do not match.'); return; }
+    if (setupPw.length < 6) { setSetupErr('Password must be at least 6 characters.'); return; }
+    setSetupSaving(true);
+    try {
+      const res = await fetch('/api/auth/create-first-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: setupEmail, password: setupPw, displayName: setupDisplayName || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create account.');
+      router.refresh();
+      window.location.reload();
+    } catch (e) {
+      setSetupErr(e instanceof Error ? e.message : 'Failed.');
+    } finally {
+      setSetupSaving(false);
+    }
+  };
+
   const initials = (me?.displayName ?? me?.username ?? 'U')
     .split(' ')
     .map((w) => w[0])
@@ -164,6 +197,88 @@ export default function ProfilePage() {
           </div>
         ) : (
           <>
+            {/* Env-var admin — no DB account yet */}
+            {me?.id === null && (
+              <div className="rk-surface rounded-2xl p-6 space-y-4 border border-amber-200 bg-amber-50">
+                <div className="flex items-start gap-3">
+                  <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-sm font-semibold text-amber-800">You&apos;re using the system admin credentials</div>
+                    <div className="text-xs text-amber-700 mt-0.5">
+                      Create a personal database account so you can set a display name, upload a photo, and manage your profile.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Your Email</label>
+                    <input
+                      type="email"
+                      value={setupEmail}
+                      onChange={(e) => setSetupEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Display Name (optional)</label>
+                    <input
+                      type="text"
+                      value={setupDisplayName}
+                      onChange={(e) => setSetupDisplayName(e.target.value)}
+                      placeholder="Your full name"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Password</label>
+                    <div className="relative">
+                      <input
+                        type={showSetupPw ? 'text' : 'password'}
+                        value={setupPw}
+                        onChange={(e) => setSetupPw(e.target.value)}
+                        placeholder="Min. 6 characters"
+                        autoComplete="new-password"
+                        className={`${inputCls} pr-10`}
+                      />
+                      <button type="button" onClick={() => setShowSetupPw((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af]" tabIndex={-1}>
+                        {showSetupPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[#6b7280] block mb-1.5">Confirm Password</label>
+                    <input
+                      type={showSetupPw ? 'text' : 'password'}
+                      value={setupConfirmPw}
+                      onChange={(e) => setSetupConfirmPw(e.target.value)}
+                      placeholder="Repeat password"
+                      autoComplete="new-password"
+                      className={inputCls}
+                    />
+                    {setupPw && setupConfirmPw && setupPw !== setupConfirmPw && (
+                      <p className="text-[11px] text-red-500 mt-1">Passwords do not match.</p>
+                    )}
+                  </div>
+
+                  {setupErr && (
+                    <div className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{setupErr}</div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => void handleSetupAccount()}
+                    disabled={setupSaving || !setupEmail || !setupPw || !setupConfirmPw}
+                    className="rk-button-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 w-full justify-center"
+                  >
+                    {setupSaving ? <Loader2 size={14} className="animate-spin" /> : <User size={14} />}
+                    {setupSaving ? 'Creating…' : 'Create My Account'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Avatar + identity */}
             <div className="rk-surface rounded-2xl p-6">
               <div className="flex items-center gap-4">
@@ -222,8 +337,8 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Profile details */}
-            <div className="rk-surface rounded-2xl p-6 space-y-4">
+            {/* Profile details — only for DB accounts */}
+            {me?.id && <div className="rk-surface rounded-2xl p-6 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <User size={15} className="text-[#c8102e]" />
                 <h2 className="text-base font-semibold text-[#1f2937]">Profile Details</h2>
@@ -267,10 +382,10 @@ export default function ProfilePage() {
                 {saving ? <Loader2 size={14} className="animate-spin" /> : saveOk ? <Check size={14} /> : <Save size={14} />}
                 {saving ? 'Saving…' : saveOk ? 'Saved!' : 'Save Changes'}
               </button>
-            </div>
+            </div>}
 
-            {/* Change password */}
-            <div className="rk-surface rounded-2xl p-6 space-y-4">
+            {/* Change password — only for DB accounts */}
+            {me?.id && <div className="rk-surface rounded-2xl p-6 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <KeyRound size={15} className="text-[#c8102e]" />
                 <h2 className="text-base font-semibold text-[#1f2937]">Change Password</h2>
@@ -340,7 +455,7 @@ export default function ProfilePage() {
                 {pwSaving ? <Loader2 size={14} className="animate-spin" /> : pwOk ? <Check size={14} /> : <KeyRound size={14} />}
                 {pwSaving ? 'Updating…' : pwOk ? 'Password Updated!' : 'Update Password'}
               </button>
-            </div>
+            </div>}
           </>
         )}
       </main>

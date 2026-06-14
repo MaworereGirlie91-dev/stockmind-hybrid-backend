@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   experimental: {},
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'api.robokorda.duckdns.org' },
+    ],
+  },
 };
 
 export default nextConfig;
