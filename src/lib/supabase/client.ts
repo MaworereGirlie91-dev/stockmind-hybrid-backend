@@ -1,7 +1,8 @@
-﻿import { createBrowserClient } from '@supabase/ssr';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
-let cachedClient: SupabaseClient | null = null;
+type AppClient = ReturnType<typeof createBrowserClient>;
+
+let cachedClient: AppClient | null = null;
 
 function readPublicEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_ANON_KEY'): string {
   const value = process.env[name];
@@ -11,18 +12,18 @@ function readPublicEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_
   return value;
 }
 
-export const createClient = (): SupabaseClient => {
+const SUPABASE_OPTS = { db: { schema: 'stockmind' } } as const;
+
+export const createClient = (): AppClient => {
   const url = readPublicEnv('NEXT_PUBLIC_SUPABASE_URL');
   const anonKey = readPublicEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
-  const opts = { db: { schema: 'stockmind' } };
-
   if (typeof window === 'undefined') {
-    return createBrowserClient(url, anonKey, opts);
+    return createBrowserClient(url, anonKey, SUPABASE_OPTS);
   }
 
   if (!cachedClient) {
-    cachedClient = createBrowserClient(url, anonKey, opts);
+    cachedClient = createBrowserClient(url, anonKey, SUPABASE_OPTS);
   }
 
   return cachedClient;
