@@ -1,5 +1,7 @@
 export const SESSION_ACTIVITY_COOKIE_NAME = 'sm_last_activity';
-export const SESSION_INACTIVITY_TIMEOUT_MS = 40_000;
+// Long timeout — effectively disabled. Session lifetime is governed by the
+// httpOnly sm_session cookie maxAge set at login (7 days by default).
+export const SESSION_INACTIVITY_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
 
 export function currentActivityValue(now = Date.now()): string {
   return String(now);

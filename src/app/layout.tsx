@@ -44,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${sora.variable} ${jetbrainsMono.variable} bg-white text-[#1f2937] antialiased overflow-x-hidden`}
+        className={`${sora.variable} ${jetbrainsMono.variable} bg-white text-[#1f2937] antialiased overflow-x-hidden pb-16 sm:pb-0`}
       >
         {children}
       </body>

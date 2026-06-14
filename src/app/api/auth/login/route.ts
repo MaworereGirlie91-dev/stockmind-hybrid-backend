@@ -1,10 +1,12 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { SESSION_ACTIVITY_COOKIE_NAME, currentActivityValue } from '@/lib/auth/inactivity';
 import {
   SESSION_COOKIE_NAME,
+  USER_INFO_COOKIE_NAME,
   authenticateCredentials,
-  issueAdminSession,
+  encodeUserInfo,
+  issueWebSession,
   readClientIp,
 } from '@/lib/server/auth';
 import { isProd, sessionDurationSeconds } from '@/lib/server/env';
@@ -25,62 +27,61 @@ export async function POST(req: NextRequest) {
     const ip = readClientIp(req);
     const rateKey = `web-login:${ip}:${username.toLowerCase() || 'unknown'}`;
 
-    const rate = consumeRateLimit({
-      key: rateKey,
-      maxAttempts: 12,
-      windowMs: 15 * 60 * 1000,
-    });
+    const rate = consumeRateLimit({ key: rateKey, maxAttempts: 12, windowMs: 15 * 60 * 1000 });
     if (!rate.allowed) {
-      const response = NextResponse.json(
-        {
-          error: 'Too many login attempts. Try again later.',
-          retry_after_seconds: rate.retryAfterSeconds,
-        },
-        { status: 429 }
+      return NextResponse.json(
+        { error: 'Too many login attempts. Try again later.', retry_after_seconds: rate.retryAfterSeconds },
+        { status: 429, headers: { 'Cache-Control': 'no-store' } }
       );
-      response.headers.set('Cache-Control', 'no-store');
-      return response;
     }
 
     if (!username || !password) {
-      const response = NextResponse.json({ error: 'Username and password are required.' }, { status: 400 });
-      response.headers.set('Cache-Control', 'no-store');
-      return response;
+      return NextResponse.json(
+        { error: 'Username and password are required.' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     const match = await authenticateCredentials(username, password);
     if (!match) {
-      const response = NextResponse.json({ error: 'Invalid credentials.' }, { status: 401 });
-      response.headers.set('Cache-Control', 'no-store');
-      return response;
+      return NextResponse.json(
+        { error: 'Invalid credentials.' },
+        { status: 401, headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     clearRateLimit(rateKey);
-    const token = await issueAdminSession(match.subject);
+    const token = await issueWebSession(match.subject, match.role);
     const ttl = sessionDurationSeconds();
+    const cookieOpts = { httpOnly: true, secure: isProd(), sameSite: 'lax' as const, path: '/', maxAge: ttl };
 
-    const response = NextResponse.json({ ok: true });
-    response.cookies.set(SESSION_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: isProd(),
-      sameSite: 'lax',
-      path: '/',
-      maxAge: ttl,
+    const response = NextResponse.json({
+      ok: true,
+      role: match.role,
+      mustChangePassword: match.mustChangePassword,
     });
+
+    response.cookies.set(SESSION_COOKIE_NAME, token, cookieOpts);
     response.cookies.set(SESSION_ACTIVITY_COOKIE_NAME, currentActivityValue(), {
+      ...cookieOpts,
       httpOnly: false,
-      secure: isProd(),
-      sameSite: 'lax',
-      path: '/',
-      maxAge: ttl,
     });
-    response.headers.set('Cache-Control', 'no-store');
+    // Non-httpOnly cookie for client-side display (role, name, avatar — not secret)
+    response.cookies.set(
+      USER_INFO_COOKIE_NAME,
+      encodeUserInfo({
+        sub: match.subject,
+        role: match.role,
+        displayName: match.displayName,
+        avatarUrl: match.avatarUrl,
+      }),
+      { ...cookieOpts, httpOnly: false }
+    );
 
+    response.headers.set('Cache-Control', 'no-store');
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to sign in.';
-    const response = NextResponse.json({ error: message }, { status: 500 });
-    response.headers.set('Cache-Control', 'no-store');
-    return response;
+    return NextResponse.json({ error: message }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }

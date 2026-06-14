@@ -752,7 +752,7 @@ class _InventoryTabState extends State<InventoryTab> {
                 
                 if (confirmed == true) {
                   try {
-                    await appState.clearAllBoxTags();
+                    await widget.appState.clearAllBoxTags();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

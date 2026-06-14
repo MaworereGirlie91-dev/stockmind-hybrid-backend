@@ -1,4 +1,4 @@
-﻿export type SessionRole = 'admin' | 'mobile';
+﻿export type SessionRole = 'admin' | 'sales' | 'mobile';
 
 export interface SessionClaims {
   sub: string;

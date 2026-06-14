@@ -1,56 +1,82 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-import { SESSION_ACTIVITY_COOKIE_NAME, isActivityExpired } from '@/lib/auth/inactivity';
-import { SESSION_COOKIE_NAME, verifySessionToken } from '@/lib/server/auth';
+import { SESSION_COOKIE_NAME, USER_INFO_COOKIE_NAME, verifySessionToken } from '@/lib/server/auth';
 
-function isPublicPath(pathname: string): boolean {
-  return (
-    pathname.startsWith('/scan') ||
-    pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/api/mobile') ||
-    pathname === '/api/it-admin/register' ||
-    pathname.startsWith('/api/sync') ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon') ||
-    pathname === '/manifest.json' ||
-    pathname.startsWith('/robokorda') ||
-    pathname === '/login'
-  );
-}
+const PUBLIC_PREFIXES = [
+  '/login',
+  '/api/auth/login',
+  '/api/mobile/',
+  '/api/sync/',
+  '/_next',
+  '/favicon',
+  '/manifest.json',
+  '/robokorda',
+  '/api/it-admin/register',
+];
+
+// Paths a sales user can access
+const SALES_ALLOWED_PREFIXES = [
+  '/sales',
+  '/profile',
+  '/api/auth/',
+  '/api/sales',
+];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (isPublicPath(pathname)) {
+  // Let public paths through without auth
+  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
   const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const activity = req.cookies.get(SESSION_ACTIVITY_COOKIE_NAME)?.value;
-  if (token) {
-    const claims = await verifySessionToken(token);
-    if (claims && claims.role === 'admin' && !isActivityExpired(activity)) {
-      return NextResponse.next();
+  if (!token) {
+    return redirectToLogin(req);
+  }
+
+  const claims = await verifySessionToken(token);
+  if (!claims) {
+    const res = redirectToLogin(req);
+    res.cookies.set(SESSION_COOKIE_NAME, '', { path: '/', maxAge: 0 });
+    res.cookies.set(USER_INFO_COOKIE_NAME, '', { path: '/', maxAge: 0 });
+    return res;
+  }
+
+  // Mobile sessions only touch mobile/sync APIs
+  if (claims.role === 'mobile') {
+    if (!pathname.startsWith('/api/mobile/') && !pathname.startsWith('/api/sync/')) {
+      return redirectToLogin(req);
+    }
+    return NextResponse.next();
+  }
+
+  // Sales role: only allowed on certain paths
+  if (claims.role === 'sales') {
+    const allowed =
+      pathname === '/' ||
+      SALES_ALLOWED_PREFIXES.some((p) => pathname.startsWith(p));
+    if (!allowed) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/sales';
+      return NextResponse.redirect(url);
     }
   }
 
-  if (pathname.startsWith('/api/')) {
-    const response = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    response.cookies.set(SESSION_COOKIE_NAME, '', { path: '/', maxAge: 0 });
-    response.cookies.set(SESSION_ACTIVITY_COOKIE_NAME, '', { path: '/', maxAge: 0 });
-    return response;
-  }
+  return NextResponse.next();
+}
 
-  const loginUrl = req.nextUrl.clone();
-  loginUrl.pathname = '/login';
-  const response = NextResponse.redirect(loginUrl);
-  response.cookies.set(SESSION_COOKIE_NAME, '', { path: '/', maxAge: 0 });
-  response.cookies.set(SESSION_ACTIVITY_COOKIE_NAME, '', { path: '/', maxAge: 0 });
-  return response;
+function redirectToLogin(req: NextRequest): NextResponse {
+  if (req.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const url = req.nextUrl.clone();
+  url.pathname = '/login';
+  return NextResponse.redirect(url);
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.ico|manifest.json).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.ico|manifest\\.json).*)',
   ],
 };

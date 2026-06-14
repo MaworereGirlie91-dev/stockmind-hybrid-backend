@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       email,
       password,
       createdBy: 'bootstrap',
-      itAdmin: true,
+      role: 'admin',
     });
 
     const token = await issueAdminSession(email);

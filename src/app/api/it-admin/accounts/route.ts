@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       email,
       password,
       createdBy: session.subject,
-      itAdmin: body.it_admin === true,
+      role: body.it_admin === true ? 'admin' : 'sales',
     });
 
     const response = NextResponse.json({ ok: true, account });
