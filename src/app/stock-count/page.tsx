@@ -1,4 +1,4 @@
-﻿/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -20,30 +20,21 @@ type CountStatus = 'idle' | 'counting' | 'done';
 interface ScannedEntry {
   epc: string;
   at: Date;
-  matched: BookCopyWithMaster | null; // null = unexpected / not in system
+  matched: BookCopyWithMaster | null;
 }
 
 export default function StockCountPage() {
   const supabase = createClient();
 
-  // All copies from DB (optionally filtered by location)
   const [allCopies, setAllCopies] = useState<BookCopyWithMaster[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [loadingDB, setLoadingDB] = useState(true);
-
-  // Session config
   const [filterLocation, setFilterLocation] = useState<string>('all');
   const [sessionName, setSessionName] = useState('');
-
-  // Count state
   const [status, setStatus] = useState<CountStatus>('idle');
   const [scanned, setScanned] = useState<ScannedEntry[]>([]);
-
-  // Clear box tags
   const [clearingBoxes, setClearingBoxes] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
-
-  // Keyboard-wedge input
   const [epcBuffer, setEpcBuffer] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -56,100 +47,51 @@ export default function StockCountPage() {
     if (error) { console.error(error); }
     const all = (data ?? []) as BookCopyWithMaster[];
     setAllCopies(all);
-
-    // Derive unique locations
-    const locs = Array.from(
-      new Set(all.map((c) => c.location ?? '').filter(Boolean))
-    ).sort();
+    const locs = Array.from(new Set(all.map((c) => c.location ?? '').filter(Boolean))).sort();
     setLocations(locs);
     setLoadingDB(false);
   }, [supabase]);
 
   useEffect(() => { fetchCopies(); }, [fetchCopies]);
 
-  // Focus the hidden input whenever counting
   useEffect(() => {
-    if (status === 'counting') {
-      inputRef.current?.focus();
-    }
+    if (status === 'counting') inputRef.current?.focus();
   }, [status]);
 
-  // Expected set: copies in the selected location (or all)
-  const expected: BookCopyWithMaster[] = allCopies.filter((c) => {
-    if (filterLocation === 'all') return true;
-    return (c.location ?? '') === filterLocation;
-  });
-
+  const expected: BookCopyWithMaster[] = allCopies.filter((c) =>
+    filterLocation === 'all' ? true : (c.location ?? '') === filterLocation
+  );
   const expectedByEpc = new Map(expected.map((c) => [c.epc_tag, c]));
-
-  // Derived results
   const scannedEpcs = new Set(scanned.map((s) => s.epc));
-
-  const matched   = scanned.filter((s) => s.matched !== null);
+  const matched    = scanned.filter((s) => s.matched !== null);
   const unexpected = scanned.filter((s) => s.matched === null);
-  const missing   = expected.filter((c) => !scannedEpcs.has(c.epc_tag));
+  const missing    = expected.filter((c) => !scannedEpcs.has(c.epc_tag));
 
   const handleEpcInput = (raw: string) => {
     const epc = raw.trim().toUpperCase();
     if (!epc) return;
-
-    // Dedupe
-    if (scanned.some((s) => s.epc === epc)) {
-      setEpcBuffer('');
-      return;
-    }
-
+    if (scanned.some((s) => s.epc === epc)) { setEpcBuffer(''); return; }
     const copy = allCopies.find((c) => c.epc_tag === epc) ?? null;
     setScanned((prev) => [...prev, { epc, at: new Date(), matched: copy }]);
     setEpcBuffer('');
   };
 
-  const removeScanned = (epc: string) => {
-    setScanned((prev) => prev.filter((s) => s.epc !== epc));
-  };
-
-  const startCount = () => {
-    setScanned([]);
-    setStatus('counting');
-    setTimeout(() => inputRef.current?.focus(), 100);
-  };
-
+  const removeScanned = (epc: string) => setScanned((prev) => prev.filter((s) => s.epc !== epc));
+  const startCount = () => { setScanned([]); setStatus('counting'); setTimeout(() => inputRef.current?.focus(), 100); };
   const finishCount = () => setStatus('done');
   const resetCount  = () => { setScanned([]); setStatus('idle'); };
 
-  // Export CSV
   const exportCSV = () => {
     const rows: string[][] = [
       ['Result', 'EPC Tag', 'Title', 'ISBN', 'Category', 'Expected Location', 'DB Status', 'Scanned At'],
     ];
-
     scanned.forEach((s) => {
       const c = s.matched;
-      rows.push([
-        c ? 'Found' : 'Unexpected',
-        s.epc,
-        c?.books_master?.title ?? 'â€”',
-        c?.books_master?.isbn ?? 'â€”',
-        c?.books_master?.category ?? 'â€”',
-        c?.location ?? 'â€”',
-        c?.status ?? 'â€”',
-        s.at.toLocaleString('en-GB'),
-      ]);
+      rows.push([s.matched ? 'Found' : 'Unexpected', s.epc, c?.books_master?.title ?? '—', c?.books_master?.isbn ?? '—', c?.books_master?.category ?? '—', c?.location ?? '—', c?.status ?? '—', s.at.toLocaleString('en-GB')]);
     });
-
     missing.forEach((c) => {
-      rows.push([
-        'Missing',
-        c.epc_tag,
-        c.books_master?.title ?? 'â€”',
-        c.books_master?.isbn ?? 'â€”',
-        c.books_master?.category ?? 'â€”',
-        c.location ?? 'â€”',
-        c.status,
-        'â€”',
-      ]);
+      rows.push(['Missing', c.epc_tag, c.books_master?.title ?? '—', c.books_master?.isbn ?? '—', c.books_master?.category ?? '—', c.location ?? '—', c.status, '—']);
     });
-
     const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -168,10 +110,7 @@ export default function StockCountPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirm: 'CLEAR_ALL_BOXES' }),
       });
-      if (res.ok) {
-        await fetchCopies();
-        resetCount();
-      }
+      if (res.ok) { await fetchCopies(); resetCount(); }
     } finally {
       setClearingBoxes(false);
       setClearConfirmOpen(false);
@@ -183,17 +122,15 @@ export default function StockCountPage() {
     : null;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
 
-      {/* Hidden keyboard-wedge input â€” always rendered so scanner can type into it */}
+      {/* Hidden keyboard-wedge input */}
       <input
         ref={inputRef}
         value={epcBuffer}
         onChange={(e) => setEpcBuffer(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') { handleEpcInput(epcBuffer); }
-        }}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleEpcInput(epcBuffer); }}
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"
@@ -205,21 +142,18 @@ export default function StockCountPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <ClipboardList size={18} className="text-amber-400" />
+            <h1 className="text-xl font-bold text-[#1f2937] flex items-center gap-2">
+              <ClipboardList size={18} className="text-amber-500" />
               Stock Count
             </h1>
-            <p className="text-xs text-[#555] mt-1">
-              Scan books in a location and compare against expected stock.
-            </p>
+            <p className="text-xs text-[#6b7280] mt-1">Scan books in a location and compare against expected stock.</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setClearConfirmOpen(true)}
               disabled={clearingBoxes}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors disabled:opacity-40"
-              title="Clear all tagged box records"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 text-xs font-medium transition-colors disabled:opacity-40"
             >
               <Trash2 size={12} />
               Clear Box Tags
@@ -228,24 +162,23 @@ export default function StockCountPage() {
               type="button"
               onClick={fetchCopies}
               disabled={loadingDB}
-              className="p-1.5 rounded-lg border border-[#2a2a2a] text-[#555] hover:text-white hover:border-[#3a3a3a] transition-colors disabled:opacity-40"
-              title="Refresh from DB"
+              className="p-1.5 rounded-lg border border-[#f3c6cc] text-[#6b7280] hover:text-[#c8102e] hover:border-[#c8102e] transition-colors disabled:opacity-40"
             >
               <RefreshCw size={13} className={loadingDB ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
 
-        {/* Clear box tags confirmation dialog */}
+        {/* Clear box tags confirmation */}
         {clearConfirmOpen && (
-          <div className="rk-surface rounded-xl p-5 border border-red-500/30 space-y-3">
+          <div className="rk-card p-5 border-red-200 space-y-3">
             <div className="flex items-start gap-3">
-              <Trash2 size={16} className="text-red-400 mt-0.5 shrink-0" />
+              <Trash2 size={16} className="text-red-500 mt-0.5 shrink-0" />
               <div>
-                <div className="text-sm font-semibold text-white">Clear all box tags?</div>
-                <p className="text-xs text-[#555] mt-1">
-                  This soft-deletes every record in <code className="text-red-300">book_boxes</code> and resets the box count to zero.
-                  Use this to restart the counting process. Individual book copies are not affected.
+                <div className="text-sm font-semibold text-[#1f2937]">Clear all box tags?</div>
+                <p className="text-xs text-[#6b7280] mt-1">
+                  This soft-deletes every record in <code className="text-red-500">book_boxes</code> and resets the box count to zero.
+                  Individual book copies are not affected.
                 </p>
               </div>
             </div>
@@ -263,7 +196,7 @@ export default function StockCountPage() {
                 type="button"
                 onClick={() => setClearConfirmOpen(false)}
                 disabled={clearingBoxes}
-                className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-[#888] hover:text-white text-xs transition-colors disabled:opacity-40"
+                className="rk-button-ghost px-4 py-2 rounded-lg text-xs transition-colors disabled:opacity-40"
               >
                 Cancel
               </button>
@@ -271,28 +204,25 @@ export default function StockCountPage() {
           </div>
         )}
 
-        {/* â”€â”€ SETUP PANEL (idle + done) â”€â”€ */}
+        {/* Setup panel */}
         {status !== 'counting' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Config */}
-            <div className="md:col-span-2 rk-surface rounded-xl p-5 space-y-4">
-              <h2 className="text-sm font-semibold text-white">Count Setup</h2>
+            <div className="md:col-span-2 rk-card p-5 space-y-4">
+              <h2 className="text-sm font-semibold text-[#1f2937]">Count Setup</h2>
 
-              {/* Session name */}
               <div>
-                <label className="text-xs text-[#555] font-medium block mb-1.5">Session label (optional)</label>
+                <label className="text-xs text-[#6b7280] font-medium block mb-1.5">Session label (optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. Main Warehouse audit, Box 3 count..."
                   value={sessionName}
                   onChange={(e) => setSessionName(e.target.value)}
-                  className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#555] transition-colors"
+                  className="rk-input w-full px-3 py-2 text-sm placeholder-[#9ca3af] focus:outline-none"
                 />
               </div>
 
-              {/* Location filter */}
               <div>
-                <label className="text-xs text-[#555] font-medium block mb-1.5">
+                <label className="text-xs text-[#6b7280] font-medium block mb-1.5">
                   <MapPin size={11} className="inline mr-1 text-[#c8102e]" />
                   Filter by location (what the system expects)
                 </label>
@@ -300,17 +230,15 @@ export default function StockCountPage() {
                   <select
                     value={filterLocation}
                     onChange={(e) => setFilterLocation(e.target.value)}
-                    className="w-full appearance-none bg-[#161616] border border-[#2a2a2a] rounded-lg pl-3 pr-8 py-2 text-sm text-white focus:outline-none focus:border-[#555] cursor-pointer"
+                    className="rk-input w-full appearance-none pl-3 pr-8 py-2 text-sm cursor-pointer focus:outline-none"
                   >
                     <option value="all">All locations ({allCopies.length} copies)</option>
                     {locations.map((loc) => {
                       const cnt = allCopies.filter((c) => c.location === loc).length;
-                      return (
-                        <option key={loc} value={loc}>{loc} ({cnt} copies)</option>
-                      );
+                      return <option key={loc} value={loc}>{loc} ({cnt} copies)</option>;
                     })}
                   </select>
-                  <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] pointer-events-none" />
+                  <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] pointer-events-none" />
                 </div>
               </div>
 
@@ -319,7 +247,7 @@ export default function StockCountPage() {
                   type="button"
                   onClick={startCount}
                   disabled={loadingDB}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white text-black font-semibold text-sm hover:bg-[#e6e6e6] transition-colors disabled:opacity-40"
+                  className="rk-button-primary flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm disabled:opacity-40"
                 >
                   <ScanLine size={15} />
                   {status === 'done' ? 'Start New Count' : 'Start Counting'}
@@ -328,7 +256,7 @@ export default function StockCountPage() {
                   <button
                     type="button"
                     onClick={exportCSV}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#3a3a3a] transition-colors text-sm font-medium"
+                    className="rk-button-ghost flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
                   >
                     <Download size={14} />
                     Export CSV
@@ -338,25 +266,25 @@ export default function StockCountPage() {
             </div>
 
             {/* Expected summary */}
-            <div className="rk-surface rounded-xl p-5 space-y-4">
-              <h2 className="text-sm font-semibold text-white">Expected</h2>
-              <div className="text-4xl font-bold text-white">
+            <div className="rk-card p-5 space-y-3">
+              <h2 className="text-sm font-semibold text-[#1f2937]">Expected</h2>
+              <div className="text-4xl font-bold text-[#1f2937]">
                 {loadingDB
-                  ? <span className="inline-block w-16 h-9 bg-[#1e1e1e] rounded animate-pulse" />
+                  ? <span className="inline-block w-16 h-9 bg-[#f3c6cc] rounded animate-pulse" />
                   : expected.length.toLocaleString()
                 }
               </div>
-              <p className="text-xs text-[#444]">
+              <p className="text-xs text-[#9ca3af]">
                 {filterLocation === 'all' ? 'Total copies in DB' : `Copies assigned to "${filterLocation}"`}
               </p>
 
               {status === 'done' && accuracyPct !== null && (
-                <div className="pt-2 border-t border-[#1e1e1e]">
-                  <div className="text-xs text-[#555] mb-1">Accuracy</div>
-                  <div className={`text-2xl font-bold ${accuracyPct === 100 ? 'text-emerald-400' : accuracyPct >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
+                <div className="pt-2 border-t border-[#f3c6cc]">
+                  <div className="text-xs text-[#6b7280] mb-1">Accuracy</div>
+                  <div className={`text-2xl font-bold ${accuracyPct === 100 ? 'text-emerald-600' : accuracyPct >= 80 ? 'text-amber-500' : 'text-red-500'}`}>
                     {accuracyPct}%
                   </div>
-                  <div className="h-1.5 bg-[#1e1e1e] rounded-full mt-2 overflow-hidden">
+                  <div className="h-1.5 bg-[#f3c6cc] rounded-full mt-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${accuracyPct === 100 ? 'bg-emerald-500' : accuracyPct >= 80 ? 'bg-amber-500' : 'bg-red-500'}`}
                       style={{ width: `${accuracyPct}%` }}
@@ -368,22 +296,22 @@ export default function StockCountPage() {
           </div>
         )}
 
-        {/* â”€â”€ COUNTING PANEL â”€â”€ */}
+        {/* Counting panel */}
         {status === 'counting' && (
-          <div className="bg-[#111] border border-amber-500/40 rounded-xl p-5 space-y-4">
+          <div className="rk-card border-amber-200 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-sm font-semibold text-white">
-                  Counting{sessionName ? ` â€” ${sessionName}` : ''}{filterLocation !== 'all' ? ` Â· ${filterLocation}` : ''}
+                <span className="text-sm font-semibold text-[#1f2937]">
+                  Counting{sessionName ? ` — ${sessionName}` : ''}{filterLocation !== 'all' ? ` · ${filterLocation}` : ''}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-[#555]">{scanned.length} scanned</span>
+                <span className="text-xs text-[#9ca3af]">{scanned.length} scanned</span>
                 <button
                   type="button"
                   onClick={finishCount}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 text-xs font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-600 hover:bg-amber-100 text-xs font-semibold transition-colors"
                 >
                   <CheckCircle2 size={13} />
                   Finish
@@ -391,8 +319,7 @@ export default function StockCountPage() {
                 <button
                   type="button"
                   onClick={resetCount}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[#555] hover:text-red-400 text-xs transition-colors"
-                  title="Cancel count"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#f3c6cc] text-[#9ca3af] hover:text-red-500 text-xs transition-colors"
                 >
                   <X size={13} />
                 </button>
@@ -403,24 +330,24 @@ export default function StockCountPage() {
             <button
               type="button"
               onClick={() => inputRef.current?.focus()}
-              className="w-full py-6 border-2 border-dashed border-[#2a2a2a] rounded-xl text-center text-[#444] hover:border-amber-500/40 hover:text-amber-400 transition-colors group"
+              className="w-full py-6 border-2 border-dashed border-[#f3c6cc] rounded-xl text-center text-[#9ca3af] hover:border-[#c8102e] hover:text-[#c8102e] transition-colors group"
             >
-              <ScanLine size={28} className="mx-auto mb-2 group-hover:text-amber-400 text-[#333]" />
+              <ScanLine size={28} className="mx-auto mb-2 group-hover:text-[#c8102e] text-[#f3c6cc]" />
               <span className="text-sm">Point scanner here and scan RFID tags</span>
-              <span className="block text-xs text-[#333] mt-1">Tap to focus Â· Each scan auto-submits</span>
+              <span className="block text-xs text-[#9ca3af] mt-1">Tap to focus · Each scan auto-submits</span>
             </button>
 
-            {/* Manual EPC entry fallback */}
+            {/* Manual EPC entry */}
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]" />
                 <input
                   type="text"
-                  placeholder="Or type EPC manually and press Enterâ€¦"
+                  placeholder="Or type EPC manually and press Enter…"
                   value={epcBuffer}
                   onChange={(e) => setEpcBuffer(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleEpcInput(epcBuffer); }}
-                  className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#555] transition-colors font-mono"
+                  className="rk-input w-full pl-9 pr-4 py-2 text-sm placeholder-[#9ca3af] focus:outline-none font-mono"
                   autoComplete="off"
                 />
               </div>
@@ -428,7 +355,7 @@ export default function StockCountPage() {
                 type="button"
                 onClick={() => handleEpcInput(epcBuffer)}
                 disabled={!epcBuffer.trim()}
-                className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold hover:bg-[#e6e6e6] transition-colors disabled:opacity-40"
+                className="rk-button-primary px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40"
               >
                 Add
               </button>
@@ -441,23 +368,21 @@ export default function StockCountPage() {
                   <div
                     key={s.epc}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border fade-in ${
-                      s.matched
-                        ? 'bg-emerald-500/5 border-emerald-500/20'
-                        : 'bg-red-500/5 border-red-500/20'
+                      s.matched ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
                     }`}
                   >
                     {s.matched
-                      ? <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
-                      : <AlertCircle size={13} className="text-red-400 shrink-0" />
+                      ? <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                      : <AlertCircle size={13} className="text-red-500 shrink-0" />
                     }
                     <div className="flex-1 min-w-0">
-                      <div className="text-white text-xs font-medium truncate">
-                        {s.matched?.books_master?.title ?? <span className="text-red-300">Not in system</span>}
+                      <div className="text-[#1f2937] text-xs font-medium truncate">
+                        {s.matched?.books_master?.title ?? <span className="text-red-500">Not in system</span>}
                       </div>
-                      <div className="text-[#444] text-[10px] font-mono">{s.epc}</div>
+                      <div className="text-[#9ca3af] text-[10px] font-mono">{s.epc}</div>
                     </div>
                     {s.matched && <StatusBadge status={s.matched.status} />}
-                    <button type="button" onClick={() => removeScanned(s.epc)} className="text-[#333] hover:text-red-400 transition-colors shrink-0">
+                    <button type="button" onClick={() => removeScanned(s.epc)} className="text-[#9ca3af] hover:text-red-500 transition-colors shrink-0">
                       <X size={12} />
                     </button>
                   </div>
@@ -467,21 +392,19 @@ export default function StockCountPage() {
           </div>
         )}
 
-        {/* â”€â”€ RESULTS (after finish) â”€â”€ */}
+        {/* Results */}
         {status === 'done' && (
           <div className="space-y-6">
-
-            {/* Summary cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: 'Expected', value: expected.length, color: 'text-white', bg: 'bg-white/5', icon: ClipboardList },
-                { label: 'Scanned', value: scanned.length, color: 'text-amber-400', bg: 'bg-amber-500/5', icon: ScanLine },
-                { label: 'Found', value: matched.length, color: 'text-emerald-400', bg: 'bg-emerald-500/5', icon: CheckCircle2 },
-                { label: 'Missing', value: missing.length, color: missing.length > 0 ? 'text-red-400' : 'text-emerald-400', bg: missing.length > 0 ? 'bg-red-500/5' : 'bg-emerald-500/5', icon: AlertTriangle },
+                { label: 'Expected', value: expected.length,  color: 'text-[#1f2937]',   bg: 'bg-white border-[#f3c6cc]',         icon: ClipboardList },
+                { label: 'Scanned',  value: scanned.length,   color: 'text-amber-500',    bg: 'bg-amber-50 border-amber-200',       icon: ScanLine },
+                { label: 'Found',    value: matched.length,   color: 'text-emerald-600',  bg: 'bg-emerald-50 border-emerald-200',   icon: CheckCircle2 },
+                { label: 'Missing',  value: missing.length,   color: missing.length > 0 ? 'text-red-500' : 'text-emerald-600', bg: missing.length > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200', icon: AlertTriangle },
               ].map(({ label, value, color, bg, icon: Icon }) => (
-                <div key={label} className={`${bg} border border-[#2a2a2a] rounded-xl p-4`}>
+                <div key={label} className={`${bg} border rounded-xl p-4`}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-[#555]">{label}</span>
+                    <span className="text-xs text-[#6b7280]">{label}</span>
                     <Icon size={13} className={color} />
                   </div>
                   <div className={`text-3xl font-bold ${color}`}>{value}</div>
@@ -489,45 +412,20 @@ export default function StockCountPage() {
               ))}
             </div>
 
-            {/* Unexpected */}
             {unexpected.length > 0 && (
-              <ResultSection
-                title="Unexpected â€” scanned but not in expected set"
-                icon={<AlertCircle size={14} className="text-amber-400" />}
-                count={unexpected.length}
-                color="amber"
-              >
-                {unexpected.map((s) => (
-                  <ResultRow key={s.epc} epc={s.epc} copy={s.matched} at={s.at} tag="unexpected" />
-                ))}
+              <ResultSection title="Unexpected — scanned but not in expected set" icon={<AlertCircle size={14} className="text-amber-500" />} count={unexpected.length} color="amber">
+                {unexpected.map((s) => <ResultRow key={s.epc} epc={s.epc} copy={s.matched} at={s.at} tag="unexpected" />)}
               </ResultSection>
             )}
 
-            {/* Missing */}
             {missing.length > 0 && (
-              <ResultSection
-                title="Missing â€” expected but not scanned"
-                icon={<AlertTriangle size={14} className="text-red-400" />}
-                count={missing.length}
-                color="red"
-              >
-                {missing.map((c) => (
-                  <ResultRow key={c.epc_tag} epc={c.epc_tag} copy={c} at={null} tag="missing" />
-                ))}
+              <ResultSection title="Missing — expected but not scanned" icon={<AlertTriangle size={14} className="text-red-500" />} count={missing.length} color="red">
+                {missing.map((c) => <ResultRow key={c.epc_tag} epc={c.epc_tag} copy={c} at={null} tag="missing" />)}
               </ResultSection>
             )}
 
-            {/* All scanned */}
-            <ResultSection
-              title="All scanned items"
-              icon={<ScanLine size={14} className="text-[#555]" />}
-              count={scanned.length}
-              color="neutral"
-              collapsible
-            >
-              {scanned.map((s) => (
-                <ResultRow key={s.epc} epc={s.epc} copy={s.matched} at={s.at} tag={s.matched ? 'found' : 'unexpected'} />
-              ))}
+            <ResultSection title="All scanned items" icon={<ScanLine size={14} className="text-[#6b7280]" />} count={scanned.length} color="neutral" collapsible>
+              {scanned.map((s) => <ResultRow key={s.epc} epc={s.epc} copy={s.matched} at={s.at} tag={s.matched ? 'found' : 'unexpected'} />)}
             </ResultSection>
           </div>
         )}
@@ -538,8 +436,6 @@ export default function StockCountPage() {
   );
 }
 
-// â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 function ResultSection({
   title, icon, count, color, children, collapsible,
 }: {
@@ -548,26 +444,27 @@ function ResultSection({
   children: React.ReactNode; collapsible?: boolean;
 }) {
   const [open, setOpen] = useState(true);
-  const borderMap = { amber: 'border-amber-500/20', red: 'border-red-500/20', emerald: 'border-emerald-500/20', neutral: 'border-[#2a2a2a]' };
+  const borderMap = { amber: 'border-amber-200', red: 'border-red-200', emerald: 'border-emerald-200', neutral: 'border-[#f3c6cc]' };
+  const bgMap     = { amber: 'bg-amber-50',       red: 'bg-red-50',       emerald: 'bg-emerald-50',       neutral: 'bg-[#fff5f6]'    };
 
   return (
-    <div className={`bg-[#111] border ${borderMap[color]} rounded-xl overflow-hidden`}>
+    <div className={`bg-white border ${borderMap[color]} rounded-xl overflow-hidden`}>
       <button
         type="button"
         onClick={() => collapsible && setOpen((o) => !o)}
-        className={`w-full flex items-center justify-between px-5 py-4 ${collapsible ? 'cursor-pointer hover:bg-[#161616]' : 'cursor-default'}`}
+        className={`w-full flex items-center justify-between px-5 py-4 ${bgMap[color]} ${collapsible ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <div className="flex items-center gap-2">
           {icon}
-          <span className="text-sm font-semibold text-white">{title}</span>
-          <span className="text-xs text-[#444] bg-[#1e1e1e] px-2 py-0.5 rounded-full">{count}</span>
+          <span className="text-sm font-semibold text-[#1f2937]">{title}</span>
+          <span className="text-xs text-[#6b7280] bg-white border border-[#f3c6cc] px-2 py-0.5 rounded-full">{count}</span>
         </div>
         {collapsible && (
-          <ChevronDown size={14} className={`text-[#555] transition-transform ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown size={14} className={`text-[#9ca3af] transition-transform ${open ? 'rotate-180' : ''}`} />
         )}
       </button>
       {open && (
-        <div className="border-t border-[#1e1e1e] divide-y divide-[#1a1a1a] max-h-80 overflow-y-auto">
+        <div className={`border-t ${borderMap[color]} divide-y divide-[#f3c6cc] max-h-80 overflow-y-auto`}>
           {children}
         </div>
       )}
@@ -575,38 +472,30 @@ function ResultSection({
   );
 }
 
-function ResultRow({
-  epc, copy, at, tag,
-}: {
-  epc: string;
-  copy: BookCopyWithMaster | null;
-  at: Date | null;
-  tag: 'found' | 'missing' | 'unexpected';
-}) {
+function ResultRow({ epc, copy, at, tag }: { epc: string; copy: BookCopyWithMaster | null; at: Date | null; tag: 'found' | 'missing' | 'unexpected' }) {
   const dotColor = tag === 'found' ? 'bg-emerald-400' : tag === 'missing' ? 'bg-red-400' : 'bg-amber-400';
   return (
-    <div className="flex items-center gap-3 px-5 py-3 hover:bg-[#161616] transition-colors">
+    <div className="flex items-center gap-3 px-5 py-3 hover:bg-[#fff5f6] transition-colors">
       <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
       <div className="flex-1 min-w-0">
-        <div className="text-white text-xs font-medium truncate">
-          {copy?.books_master?.title ?? <span className="text-[#555] italic">Unknown â€” not in system</span>}
+        <div className="text-[#1f2937] text-xs font-medium truncate">
+          {copy?.books_master?.title ?? <span className="text-[#9ca3af] italic">Unknown — not in system</span>}
         </div>
         <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-          <code className="text-[10px] text-[#555] font-mono">{epc}</code>
-          {copy?.books_master?.category && <span className="text-[10px] text-[#444]">{copy.books_master.category}</span>}
-          {copy?.location && <span className="text-[10px] text-[#444] flex items-center gap-0.5"><MapPin size={9} />{copy.location}</span>}
-          {at && <span className="text-[10px] text-[#333]">{at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>}
+          <code className="text-[10px] text-[#9ca3af] font-mono">{epc}</code>
+          {copy?.books_master?.category && <span className="text-[10px] text-[#6b7280]">{copy.books_master.category}</span>}
+          {copy?.location && <span className="text-[10px] text-[#6b7280] flex items-center gap-0.5"><MapPin size={9} />{copy.location}</span>}
+          {at && <span className="text-[10px] text-[#9ca3af]">{at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>}
         </div>
       </div>
       {copy && <StatusBadge status={copy.status} />}
       <span className={`text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded ${
-        tag === 'found'      ? 'text-emerald-400 bg-emerald-500/10' :
-        tag === 'missing'    ? 'text-red-400 bg-red-500/10' :
-        'text-amber-400 bg-amber-500/10'
+        tag === 'found'   ? 'text-emerald-600 bg-emerald-50' :
+        tag === 'missing' ? 'text-red-500 bg-red-50' :
+        'text-amber-500 bg-amber-50'
       }`}>
         {tag}
       </span>
     </div>
   );
 }
-

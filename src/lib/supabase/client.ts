@@ -4,19 +4,20 @@ type AppClient = ReturnType<typeof createBrowserClient>;
 
 let cachedClient: AppClient | null = null;
 
-function readPublicEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_ANON_KEY'): string {
-  const value = process.env[name];
-  if (!value || !value.trim()) {
-    throw new Error(`Missing required public environment variable: ${name}`);
-  }
-  return value;
-}
-
 const SUPABASE_OPTS = { db: { schema: 'stockmind' } } as const;
 
 export const createClient = (): AppClient => {
-  const url = readPublicEnv('NEXT_PUBLIC_SUPABASE_URL');
-  const anonKey = readPublicEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  // Must use static property access — webpack can only inline process.env.NEXT_PUBLIC_*
+  // when the key is a string literal, not a variable (process.env[varName] stays undefined).
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !url.trim()) {
+    throw new Error('Missing required public environment variable: NEXT_PUBLIC_SUPABASE_URL');
+  }
+  if (!anonKey || !anonKey.trim()) {
+    throw new Error('Missing required public environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  }
 
   if (typeof window === 'undefined') {
     return createBrowserClient(url, anonKey, SUPABASE_OPTS);
